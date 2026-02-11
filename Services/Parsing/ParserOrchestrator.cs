@@ -7,8 +7,9 @@ using Serilog;
 namespace WordParserLibrary.Services.Parsing
 {
 	/// <summary>
-	/// Orkiestrator parsowania: klasyfikuje akapity, deleguje budowanie encji
-	/// i aktualizuje kontekst nowelizacji (pozycje strukturalna i wykryte cele).
+	/// Orkiestrator parsowania: jednoprzebiegowy przeplyw, ktory
+	/// (1) klasyfikuje akapit, (2) buduje encje, (3) aktualizuje kontekst.
+	/// Odpowiada za reset stanu podpoziomow oraz wykrywanie nowelizacji.
 	/// </summary>
 	public sealed class ParserOrchestrator
 	{
@@ -23,6 +24,13 @@ namespace WordParserLibrary.Services.Parsing
 
 		/// <summary>
 		/// Przetwarza pojedynczy akapit i aktualizuje stan kontekstu.
+		/// Flow:
+		/// - klasyfikacja akapitu i aktualizacja stanu nowelizacji,
+		/// - pominiecie tresci nowelizacji,
+		/// - budowa encji (ART/UST/PKT/LIT/TIR) i walidacja numeracji,
+		/// - reset podpoziomow w kontekscie,
+		/// - aktualizacja referencji strukturalnej,
+		/// - wykrycie celow i triggerow nowelizacji.
 		/// </summary>
 		public void ProcessParagraph(Paragraph paragraph, ParsingContext context)
 		{
@@ -165,7 +173,7 @@ namespace WordParserLibrary.Services.Parsing
 		/// <summary>
 		/// Aktualizuje biezaca pozycje strukturalna w kontekscie na podstawie
 		/// numeru zbudowanej encji. Ustawienie poziomu resetuje podrzedne
-		/// (np. SetArticle zeruje ust/pkt/lit/tir).
+		/// (np. SetArticle zeruje ust/pkt/lit/tir), aby zachowac spojne ID.
 		/// </summary>
 		private static void UpdateStructuralReference(ParsingContext context, BaseEntity entity)
 		{
@@ -197,7 +205,7 @@ namespace WordParserLibrary.Services.Parsing
 		/// <summary>
 		/// Wykrywa cele nowelizacji w tresci encji implementujacej IHasAmendments.
 		/// Parsuje wzorce typu "w art. 5", "po ust. 2" itp. i zapisuje
-		/// wykryty cel w kontekscie (DetectedAmendmentTargets).
+		/// wykryty cel w kontekscie (DetectedAmendmentTargets) dla dalszego mapowania.
 		/// </summary>
 		private static void DetectAmendmentTargets(ParsingContext context, BaseEntity entity)
 		{
@@ -231,7 +239,7 @@ namespace WordParserLibrary.Services.Parsing
 
 		/// <summary>
 		/// Aktualizuje stan kontekstu nowelizacji na podstawie stylu akapitu.
-		/// Logika oparta na stylach (nie na cudzysłowach):
+		/// Logika oparta na stylach (nie na cudzyslowach):
 		/// - Styl Z/... → zawsze nowelizacja
 		/// - Rozpoznany styl ustawy matki (ART/UST/PKT/LIT/TIR) → wyjscie z nowelizacji
 		/// - Brak stylu + trigger → wejscie w nowelizacje
@@ -278,7 +286,8 @@ namespace WordParserLibrary.Services.Parsing
 
 		/// <summary>
 		/// Sprawdza czy przetworzony akapit zawiera zwrot rozpoczynajacy nowelizacje.
-		/// Wywolywane PO przetworzeniu akapitu (po budowaniu encji).
+		/// Wywolywane PO przetworzeniu akapitu (po budowaniu encji),
+		/// aby kolejny akapit bez stylu zostal oznaczony jako tresc nowelizacji.
 		/// </summary>
 		private static void DetectAmendmentTrigger(ParsingContext context, string text)
 		{

@@ -89,6 +89,11 @@ namespace WordParserLibrary.Services.Parsing
 				case ParagraphKind.Point:
 					var ensuredParagraph = _paragraphBuilder.EnsureForPoint(context.CurrentArticle, context.CurrentParagraph);
 					context.CurrentParagraph = ensuredParagraph.Paragraph;
+
+					// Wiaz intro z segmentem rodzica przed dodaniem pierwszego punktu
+					if (context.CurrentParagraph.Points.Count == 0)
+						ParsingFactories.AttachIntroCommonPart(context.CurrentParagraph);
+
 					context.CurrentPoint = _pointBuilder.Build(new PointBuildInput(context.CurrentParagraph, context.CurrentArticle, text));
 					_numberingValidator.ValidatePoint(context.CurrentPoint);
 					ValidationReporter.AddClassificationWarning(context.CurrentPoint, classification, "PKT");
@@ -107,6 +112,11 @@ namespace WordParserLibrary.Services.Parsing
 						ValidationReporter.AddValidationMessage(context.CurrentPoint, ValidationLevel.Warning,
 							"Brak jawnego punktu; utworzono niejawny punkt na podstawie struktury.");
 					}
+
+					// Wiaz intro z segmentem rodzica przed dodaniem pierwszej litery
+					if (context.CurrentPoint.Letters.Count == 0)
+						ParsingFactories.AttachIntroCommonPart(context.CurrentPoint);
+
 					context.CurrentLetter = _letterBuilder.Build(new LetterBuildInput(context.CurrentPoint, context.CurrentParagraph, context.CurrentArticle, text));
 					_numberingValidator.ValidateLetter(context.CurrentLetter);
 					ValidationReporter.AddClassificationWarning(context.CurrentLetter, classification, "LIT");
@@ -133,6 +143,11 @@ namespace WordParserLibrary.Services.Parsing
 						ValidationReporter.AddValidationMessage(context.CurrentLetter, ValidationLevel.Warning,
 							"Brak jawnej litery; utworzono niejawna litere na podstawie struktury.");
 					}
+
+					// Wiaz intro z segmentem rodzica przed dodaniem pierwszego tiretu
+					if (context.CurrentLetter.Tirets.Count == 0)
+						ParsingFactories.AttachIntroCommonPart(context.CurrentLetter);
+
 					context.CurrentTiretIndex++;
 					var tiret = _tiretBuilder.Build(new TiretBuildInput(context.CurrentLetter, context.CurrentPoint, context.CurrentParagraph,
 						context.CurrentArticle, text, context.CurrentTiretIndex));

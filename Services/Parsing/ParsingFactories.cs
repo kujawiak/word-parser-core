@@ -1,5 +1,7 @@
+using System.Linq;
 using System.Text.RegularExpressions;
 using ModelDto;
+using ModelDto.EditorialUnits;
 using DtoArticle = ModelDto.EditorialUnits.Article;
 using DtoLetter = ModelDto.EditorialUnits.Letter;
 using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
@@ -219,6 +221,42 @@ namespace WordParserLibrary.Services.Parsing
 		{
 			var match = Regex.Match(text.Trim(), "^Art\\.?\\s*\\d+[a-zA-Z]*\\.?\\s*(.*)$", RegexOptions.IgnoreCase);
 			return match.Success ? match.Groups[1].Value : string.Empty;
+		}
+
+		/// <summary>
+		/// Tworzy CommonPart typu Intro i wiaze go z odpowiednim segmentem tekstu rodzica.
+		/// Logika:
+		///   - 1 segment  -> caly segment jest Intro
+		///   - N segmentow -> ostatni segment jest Intro
+		/// Warunki wstepne: rodzic implementuje IHasCommonParts i IHasTextSegments,
+		/// posiada segmenty tekstu i nie ma jeszcze CommonPart Intro.
+		/// </summary>
+		public static void AttachIntroCommonPart(BaseEntity parent)
+		{
+			if (parent is not IHasCommonParts hasCommonParts) return;
+			if (parent is not IHasTextSegments hasTextSegments) return;
+
+			var segments = hasTextSegments.TextSegments;
+			if (segments.Count == 0) return;
+
+			// Nie dodawaj ponownie jesli intro juz istnieje
+			if (hasCommonParts.CommonParts.Any(cp => cp.Type == CommonPartType.Intro))
+				return;
+
+			// 1 segment -> caly jest intro; wiele segmentow -> ostatni jest intro
+			var introSegment = segments.Count == 1 ? segments[0] : segments[^1];
+			introSegment.Role = "ListIntro";
+
+			var commonPart = new CommonPart(
+				CommonPartType.Intro,
+				parent.Id,
+				introSegment.Text,
+				introSegment.Order)
+			{
+				Parent = parent
+			};
+
+			hasCommonParts.CommonParts.Add(commonPart);
 		}
 	}
 }

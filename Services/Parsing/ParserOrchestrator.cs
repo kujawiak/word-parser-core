@@ -19,6 +19,7 @@ namespace WordParserLibrary.Services.Parsing
 		private readonly LetterBuilder _letterBuilder = new();
 		private readonly TiretBuilder _tiretBuilder = new();
 		private readonly NumberingContinuityValidator _numberingValidator = new();
+		private readonly JournalReferenceService _journalReferenceService = new();
 
 		/// <summary>
 		/// Przetwarza pojedynczy akapit i aktualizuje stan kontekstu.
@@ -62,6 +63,7 @@ namespace WordParserLibrary.Services.Parsing
 					DetectAmendmentTargets(context, result.Paragraph);
 				}
 				DetectAmendmentTrigger(context, text);
+				_journalReferenceService.ParseJournalReferences(result.Article);
 				return;
 			}
 

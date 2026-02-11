@@ -24,12 +24,6 @@ namespace WordParserLibrary.Services.Parsing
 		private static readonly Regex TiretPrefix = new(@"^\u2013+\s*", RegexOptions.Compiled);
 
 		/// <summary>
-		/// Regex podzialu na zdania: kropka, po ktorej wystepuje spacja
-		/// i wielka litera (poczatek nowego zdania).
-		/// </summary>
-		private static readonly Regex SentenceSplitter = new(@"(?<=\.)\s+(?=[A-ZĄĆĘŁŃÓŚŹŻ])", RegexOptions.Compiled);
-
-		/// <summary>
 		/// Usuwa prefiks numeru ustepu (np. "1. ") z tekstu.
 		/// </summary>
 		public static string StripParagraphPrefix(string text)
@@ -55,7 +49,9 @@ namespace WordParserLibrary.Services.Parsing
 
 		/// <summary>
 		/// Dzieli tekst na segmenty (zdania). Podział następuje w miejscu,
-		/// gdzie po kropce i spacji pojawia się wielka litera.
+		/// gdzie po kropce i spacji pojawia się wielka litera, z wyjątkami:
+		/// - "RRRR r." (rok) - nie jest punktem podziału
+		/// - "Dz. U." (czasopismo) - nie jest punktem podziału
 		/// </summary>
 		public static List<TextSegment> SplitIntoSentences(string text)
 		{
@@ -63,21 +59,176 @@ namespace WordParserLibrary.Services.Parsing
 			if (string.IsNullOrWhiteSpace(text))
 				return segments;
 
-			var parts = SentenceSplitter.Split(text);
-			for (int i = 0; i < parts.Length; i++)
+			var sentences = SplitBySentenceWithExceptions(text);
+			for (int i = 0; i < sentences.Count; i++)
 			{
-				var part = parts[i].Trim();
-				if (!string.IsNullOrEmpty(part))
+				var sentence = sentences[i].Trim();
+				if (!string.IsNullOrEmpty(sentence))
 				{
 					segments.Add(new TextSegment
 					{
 						Type = TextSegmentType.Sentence,
-						Text = part,
+						Text = sentence,
 						Order = i + 1
 					});
 				}
 			}
 			return segments;
+		}
+
+		/// <summary>
+		/// Dzieli tekst na zdania z uwzględnieniem wyjątków:
+		/// - Nie dzieli po "RRRR r." (rok)
+		/// - Nie dzieli po "Dz. U." (czasopismo)
+		/// </summary>
+		private static List<string> SplitBySentenceWithExceptions(string text)
+		{
+			var result = new List<string>();
+			if (string.IsNullOrWhiteSpace(text))
+				return result;
+
+			int startIndex = 0;
+			for (int i = 0; i < text.Length - 1; i++)
+			{
+				if (text[i] == '.' && i + 1 < text.Length && text[i + 1] == ' ')
+				{
+					// Znaleziono potencjalny koniec zdania (kropka + spacja)
+					// Sprawdź czy następuje wielka litera
+					int nextCharIndex = i + 2;
+					while (nextCharIndex < text.Length && char.IsWhiteSpace(text[nextCharIndex]))
+					{
+						nextCharIndex++;
+					}
+
+					if (nextCharIndex >= text.Length || !IsUpperCaseLetter(text[nextCharIndex]))
+					{
+						// Brak wielkiej litery - to nie koniec zdania
+						continue;
+					}
+
+					// Jest wielka litera, ale sprawdź wyjątki
+					if (IsRokException(text, i) || IsDzUException(text, i))
+					{
+						// To jest wyjątek - nie dziel tutaj
+						continue;
+					}
+
+					// To jest prawdziwy koniec zdania
+					string sentence = text.Substring(startIndex, i - startIndex + 1);
+					result.Add(sentence);
+					startIndex = i + 2;
+				}
+			}
+
+			// Dodaj pozostałą część tekstu jako ostatnie zdanie
+			if (startIndex < text.Length)
+			{
+				result.Add(text.Substring(startIndex));
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Sprawdza czy kropka na pozycji `dotIndex` jest częścią wyrażenia "RRRR r."
+		/// </summary>
+		private static bool IsRokException(string text, int dotIndex)
+		{
+			// Szukamy wzorca: cyfra cyfra cyfra cyfra spacja r . 
+			// tj. "RRRR r."
+			if (dotIndex < 7) return false;
+
+			// Sprawdź czy jest " r." przed dotIndex
+			if (text[dotIndex - 1] != 'r' || text[dotIndex - 2] != ' ')
+				return false;
+
+			// Sprawdź czy poprzedzające to 4 cyfry (rok)
+			// text[dotIndex - 3] powinno być spacją lub cyfrą
+			int checkPos = dotIndex - 3;
+			int digitCount = 0;
+			while (checkPos >= 0 && char.IsDigit(text[checkPos]))
+			{
+				digitCount++;
+				checkPos--;
+			}
+
+			// Powinna być dokładnie 4 cyfry na rok
+			return digitCount == 4;
+		}
+
+		/// <summary>
+		/// Sprawdza czy kropka na pozycji `dotIndex` jest częścią wyrażenia "Dz. U."
+		/// </summary>
+		private static bool IsDzUException(string text, int dotIndex)
+		{
+			// Szukamy wyrażenia "Dz. U." gdzie dotIndex to pozycja kropki
+			// Przypadki:
+			// - "Dz. U. z..." gdzie dotIndex = pozycja kropki po "Dz"
+			// - "Dz.U. z..." gdzie dotIndex = pozycja kropki po "Dz"
+			// - Lub dotIndex może być później, np. na "U."
+			
+			// Jeśli pozycja wskazuje na "Dz.", sprawdź czy następuje "U"
+			if (dotIndex > 0 && (text[dotIndex - 1] == 'z' || text[dotIndex - 1] == 'Z'))
+			{
+				// Mamy "z.", tj. koniec "Dz."
+				// Patrzym czy wcześniej jest "D"
+				if (dotIndex >= 2 && (text[dotIndex - 2] == 'D' || text[dotIndex - 2] == 'd'))
+				{
+					// Mamy "Dz."
+					// Patrzym czy dalej jest " U" lub " u"
+					int nextPos = dotIndex + 1;
+					while (nextPos < text.Length && text[nextPos] == ' ')
+						nextPos++;
+					
+					if (nextPos < text.Length && (text[nextPos] == 'U' || text[nextPos] == 'u'))
+					{
+						// Dalej jest "U", czyli mamy "Dz. U" - to wyjątek
+						return true;
+					}
+				}
+			}
+
+			// Sprawdzenie dla "U."
+			if (dotIndex > 0 && (text[dotIndex - 1] == 'U' || text[dotIndex - 1] == 'u'))
+			{
+				// Mamy "U."
+				// Patrzym czy wcześniej jest "Dz. " lub "Dz."
+				int searchPos = dotIndex - 2;
+				
+				// Pomiń spacje
+				while (searchPos >= 0 && text[searchPos] == ' ')
+					searchPos--;
+				
+				// Sprawdzenie czy jest "."
+				if (searchPos >= 0 && text[searchPos] == '.')
+				{
+					searchPos--;
+					// Sprawdzenie czy jest 'z' lub 'Z'
+					if (searchPos >= 0 && (text[searchPos] == 'z' || text[searchPos] == 'Z'))
+					{
+						searchPos--;
+						// Pomiń spacje
+						while (searchPos >= 0 && text[searchPos] == ' ')
+							searchPos--;
+						
+						// Sprawdzenie czy jest 'D' lub 'd'
+						if (searchPos >= 0 && (text[searchPos] == 'D' || text[searchPos] == 'd'))
+						{
+							return true;
+						}
+					}
+				}
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Sprawdza czy znak to wielka litera (w tym polskie)
+		/// </summary>
+		private static bool IsUpperCaseLetter(char c)
+		{
+			return char.IsUpper(c) || "ĄĆĘŁŃÓŚŹŻ".Contains(c);
 		}
 
 		/// <summary>

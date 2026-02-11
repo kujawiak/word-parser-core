@@ -27,6 +27,9 @@ namespace WordParserLibrary.Services
 			if (article == null || string.IsNullOrEmpty(article.ContentText))
 				return;
 
+			if (!StartsWithAmendingFormula(article.ContentText))
+				return;
+
 			// Fallback roku: EffectiveDate artykułu, a jeśli nie ustawione — bieżący rok
 			var fallbackYear = article.EffectiveDate.Year > 1
 				? article.EffectiveDate.Year
@@ -75,6 +78,13 @@ namespace WordParserLibrary.Services
 					article.Id,
 					string.Join("; ", article.Journals.Select(j => j.ToStringLong())));
 			}
+		}
+
+		private static bool StartsWithAmendingFormula(string contentText)
+		{
+			var text = contentText.Trim();
+			text = Regex.Replace(text, @"^(Art\.|§)\s*[\w\d]+\.?\s*", string.Empty, RegexOptions.IgnoreCase);
+			return text.StartsWith("W ustawie z dnia", StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }

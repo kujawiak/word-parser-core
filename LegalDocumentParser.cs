@@ -32,6 +32,10 @@ namespace WordParserLibrary
 				orchestrator.ProcessParagraph(paragraph, context);
 			}
 
+			// Finalizacja — wypróżnienie bufora nowelizacji jeśli dokument
+			// kończy się wewnątrz treści nowelizacji
+			orchestrator.Finalize(context);
+
 			return document;
 		}
 

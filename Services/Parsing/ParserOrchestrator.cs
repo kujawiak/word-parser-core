@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ModelDto;
 using WordParserLibrary.Helpers;
@@ -19,6 +20,7 @@ namespace WordParserLibrary.Services.Parsing
 		private readonly PointBuilder _pointBuilder = new();
 		private readonly LetterBuilder _letterBuilder = new();
 		private readonly TiretBuilder _tiretBuilder = new();
+		private readonly AmendmentBuilder _amendmentBuilder = new();
 		private readonly NumberingContinuityValidator _numberingValidator = new();
 		private readonly JournalReferenceService _journalReferenceService = new();
 
@@ -43,14 +45,22 @@ namespace WordParserLibrary.Services.Parsing
 			var styleId = paragraph.StyleId();
 			var classification = _classifier.Classify(text, styleId);
 
+			// Zapamietaj stan nowelizacji PRZED aktualizacja
+			bool wasInsideAmendment = context.InsideAmendment;
+
 			// Sprawdz i aktualizuj stan nowelizacji PRZED przetwarzaniem
 			UpdateAmendmentState(context, classification);
 
-			// Pomijaj akapity w nowelizacji (styl Z/... lub wewnatrz tresci nowelizacji)
+			// Jesli wychodzmy z nowelizacji — zbuduj zebraną treść
+			if (wasInsideAmendment && !context.InsideAmendment)
+			{
+				FlushAmendmentCollector(context);
+			}
+
+			// Zbieraj akapity nowelizacji (zamiast pomijania)
 			if (classification.IsAmendmentContent || context.InsideAmendment)
 			{
-				Log.Debug("Pominieto akapit nowelizacji: styl={StyleId}, insideAmendment={Inside}, text={Text}",
-					styleId, context.InsideAmendment, text.Length > 60 ? text.Substring(0, 60) + "..." : text);
+				CollectAmendmentParagraph(context, text, styleId);
 				return;
 			}
 
@@ -170,6 +180,111 @@ namespace WordParserLibrary.Services.Parsing
 			}
 		}
 
+		// ============================================================
+		// Zbieranie i budowanie nowelizacji
+		// ============================================================
+
+		/// <summary>
+		/// Zbiera akapit nowelizacji do bufora. Jesli kolektor nie jest jeszcze uruchomiony,
+		/// rozpoczyna zbieranie z odpowiednim wlascicielem i celem.
+		/// </summary>
+		private void CollectAmendmentParagraph(ParsingContext context, string text, string? styleId)
+		{
+			if (!context.AmendmentCollector.IsCollecting)
+			{
+				var owner = context.AmendmentOwner ?? GetCurrentAmendmentOwner(context);
+				if (owner != null)
+				{
+					var target = context.DetectedAmendmentTargets.TryGetValue(owner.Guid, out var t) ? t : null;
+					context.AmendmentCollector.Begin(owner, target);
+				}
+			}
+
+			context.AmendmentCollector.AddParagraph(text, styleId);
+		}
+
+		/// <summary>
+		/// Buduje nowelizacje z zebranych akapitow i przypisuje ja do encji-wlasciciela.
+		/// Wywolywane po zamknieciu nowelizacji (powrot do stylu ustawy matki)
+		/// lub na koncu dokumentu.
+		/// </summary>
+		private void FlushAmendmentCollector(ParsingContext context)
+		{
+			var collector = context.AmendmentCollector;
+			if (!collector.IsCollecting || collector.Count == 0)
+			{
+				collector.Reset();
+				context.AmendmentOwner = null;
+				return;
+			}
+
+			var input = new AmendmentBuildInput(
+				collector.Paragraphs,
+				collector.Target,
+				AmendmentOperationType.Modification);
+
+			var content = _amendmentBuilder.Build(input);
+
+			var amendment = new Amendment
+			{
+				OperationType = input.OperationType,
+				Content = content
+			};
+
+			if (collector.Target != null)
+			{
+				amendment.Targets.Add(collector.Target);
+			}
+
+			if (collector.Owner is IHasAmendments hasAmendments)
+			{
+				hasAmendments.Amendments.Add(amendment);
+				Log.Information(
+					"Przypisano nowelizację do {UnitType} [{EntityId}]: {Amendment}",
+					collector.Owner.UnitType, collector.Owner.Id, amendment);
+			}
+			else
+			{
+				Log.Warning(
+					"Nie można przypisać nowelizacji — właściciel {Owner} nie implementuje IHasAmendments",
+					collector.Owner?.Id ?? "null");
+			}
+
+			collector.Reset();
+			context.AmendmentOwner = null;
+		}
+
+		/// <summary>
+		/// Zwraca najgłębszą encję w bieżącym kontekście, która implementuje IHasAmendments.
+		/// Używane do ustalenia właściciela nowelizacji, gdy nie został jawnie ustawiony
+		/// przez trigger.
+		/// </summary>
+		private static BaseEntity? GetCurrentAmendmentOwner(ParsingContext context)
+		{
+			if (context.CurrentLetter is IHasAmendments) return context.CurrentLetter;
+			if (context.CurrentPoint is IHasAmendments) return context.CurrentPoint;
+			if (context.CurrentParagraph is IHasAmendments) return context.CurrentParagraph;
+			return null;
+		}
+
+		/// <summary>
+		/// Finalizuje przetwarzanie — wypróżnia bufor nowelizacji jeśli dokument
+		/// kończy się w trakcie tresci nowelizacji.
+		/// </summary>
+		public void Finalize(ParsingContext context)
+		{
+			if (context.InsideAmendment || context.AmendmentCollector.IsCollecting)
+			{
+				Log.Debug("Finalizacja: dokument zakończony wewnątrz nowelizacji, wypłukanie bufora");
+				FlushAmendmentCollector(context);
+				context.InsideAmendment = false;
+			}
+		}
+
+		// ============================================================
+		// Aktualizacja pozycji strukturalnej
+		// ============================================================
+
 		/// <summary>
 		/// Aktualizuje biezaca pozycje strukturalna w kontekscie na podstawie
 		/// numeru zbudowanej encji. Ustawienie poziomu resetuje podrzedne
@@ -267,6 +382,7 @@ namespace WordParserLibrary.Services.Parsing
 				// wiec nie jest trescia nowelizacji. Nowy trigger zostanie
 				// ustawiony PO przetworzeniu tego akapitu jesli zawiera zwrot.
 				context.AmendmentTriggerDetected = false;
+				context.AmendmentOwner = null;
 				return;
 			}
 
@@ -296,7 +412,9 @@ namespace WordParserLibrary.Services.Parsing
 				text.Contains("otrzymują brzmienie:", StringComparison.OrdinalIgnoreCase))
 			{
 				context.AmendmentTriggerDetected = true;
-				Log.Debug("Wykryto zwrot nowelizacyjny: {Text}",
+				context.AmendmentOwner = GetCurrentAmendmentOwner(context);
+				Log.Debug("Wykryto zwrot nowelizacyjny (owner={OwnerId}): {Text}",
+					context.AmendmentOwner?.Id ?? "brak",
 					text.Length > 80 ? text.Substring(0, 80) + "..." : text);
 			}
 		}

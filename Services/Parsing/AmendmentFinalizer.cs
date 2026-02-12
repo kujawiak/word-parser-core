@@ -233,7 +233,7 @@ namespace WordParserLibrary.Services.Parsing
 		{
 			if (owner is IHasAmendments hasAmendments)
 			{
-				hasAmendments.Amendments.Add(amendment);
+				hasAmendments.Amendment = amendment;
 				return true;
 			}
 			return false;

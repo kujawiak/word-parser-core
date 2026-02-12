@@ -18,9 +18,10 @@ namespace WordParserLibrary.Services.Parsing
 		private static readonly EntityNumberService _numberService = new();
 
 		// Regexy do usuwania prefiksu numeru z tresci
-		private static readonly Regex ParagraphNumberPrefix = new(@"^\d+[a-zA-Z]*\.\s+", RegexOptions.Compiled);
-		private static readonly Regex PointNumberPrefix = new(@"^\d+[a-zA-Z]*\)\s*", RegexOptions.Compiled);
-		private static readonly Regex LetterNumberPrefix = new(@"^[a-zA-Z]{1,5}\)\s*", RegexOptions.Compiled);
+		private const string OptionalQuotePrefix = "(?:[\"\\u201E\\u201C\\u201D]\\s*)?";
+		private static readonly Regex ParagraphNumberPrefix = new($@"^{OptionalQuotePrefix}\d+[a-zA-Z]*\.\s+", RegexOptions.Compiled);
+		private static readonly Regex PointNumberPrefix = new($@"^{OptionalQuotePrefix}\d+[a-zA-Z]*\)\s*", RegexOptions.Compiled);
+		private static readonly Regex LetterNumberPrefix = new($@"^{OptionalQuotePrefix}[a-zA-Z]{{1,5}}\)\s*", RegexOptions.Compiled);
 		private static readonly Regex TiretPrefix = new(@"^\u2013+\s*", RegexOptions.Compiled);
 
 		/// <summary>
@@ -316,7 +317,7 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text, "^Art\\.?\\s*(\\d+[a-zA-Z]*)", RegexOptions.IgnoreCase);
+			var match = Regex.Match(text, $"^{OptionalQuotePrefix}Art\\.?\\s*(\\d+[a-zA-Z]*)", RegexOptions.IgnoreCase);
 			if (match.Success)
 			{
 				return _numberService.Parse(match.Groups[1].Value);
@@ -332,7 +333,7 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text.Trim(), "^(\\d+[a-zA-Z]*)\\.\\s+", RegexOptions.IgnoreCase);
+			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}(\\d+[a-zA-Z]*)\\.\\s+", RegexOptions.IgnoreCase);
 			if (match.Success)
 			{
 				return _numberService.Parse(match.Groups[1].Value);
@@ -348,7 +349,7 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text.Trim(), "^(\\d+[a-zA-Z]*)\\)\\s*", RegexOptions.IgnoreCase);
+			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}(\\d+[a-zA-Z]*)\\)\\s*", RegexOptions.IgnoreCase);
 			if (match.Success)
 			{
 				return _numberService.Parse(match.Groups[1].Value);
@@ -364,13 +365,13 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text.Trim(), "^([a-zA-Z]{1,5})\\)\\s*", RegexOptions.IgnoreCase);
+			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}([a-zA-Z]{{1,5}})\\)\\s*", RegexOptions.IgnoreCase);
 			return match.Success ? _numberService.Parse(match.Groups[1].Value) : null;
 		}
 
 		public static string GetArticleTail(string text)
 		{
-			var match = Regex.Match(text.Trim(), "^Art\\.?\\s*\\d+[a-zA-Z]*\\.?\\s*(.*)$", RegexOptions.IgnoreCase);
+			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}Art\\.?\\s*\\d+[a-zA-Z]*\\.?\\s*(.*)$", RegexOptions.IgnoreCase);
 			return match.Success ? match.Groups[1].Value : string.Empty;
 		}
 

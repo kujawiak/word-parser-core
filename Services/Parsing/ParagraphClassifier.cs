@@ -147,22 +147,22 @@ namespace WordParserLibrary.Services.Parsing
 
 		public static bool IsArticleByText(string text)
 		{
-			return Regex.IsMatch(text.Trim(), "^Art\\.?\\s*\\d+", RegexOptions.IgnoreCase);
+			return Regex.IsMatch(text.Trim(), "^(?:[\"\u201E\u201C\u201D]\\s*)?Art\\.?\\s*\\d+", RegexOptions.IgnoreCase);
 		}
 
 		public static bool IsParagraphByText(string text)
 		{
-			return Regex.IsMatch(text, "^\\d+[a-zA-Z]*\\.\\s+", RegexOptions.IgnoreCase);
+			return Regex.IsMatch(text, "^(?:[\"\u201E\u201C\u201D]\\s*)?\\d+[a-zA-Z]*\\.\\s+", RegexOptions.IgnoreCase);
 		}
 
 		public static bool IsPointByText(string text)
 		{
-			return Regex.IsMatch(text, "^\\d+[a-zA-Z]*\\)\\s*", RegexOptions.IgnoreCase);
+			return Regex.IsMatch(text, "^(?:[\"\u201E\u201C\u201D]\\s*)?\\d+[a-zA-Z]*\\)\\s*", RegexOptions.IgnoreCase);
 		}
 
 		public static bool IsLetterByText(string text)
 		{
-			return Regex.IsMatch(text, "^[a-zA-Z]{1,5}\\)\\s*", RegexOptions.IgnoreCase);
+			return Regex.IsMatch(text, "^(?:[\"\u201E\u201C\u201D]\\s*)?[a-zA-Z]{1,5}\\)\\s*", RegexOptions.IgnoreCase);
 		}
 
 		public static bool IsTiretByText(string text)

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 
 namespace WordParserLibrary
 {
-	public static class StyleLibraryMapper
+    public sealed record StyleInfo(string DisplayName, bool IsAmendment);
+
+    public static class StyleLibraryMapper
 	{
 		public static readonly IReadOnlyDictionary<string, string> StyleMap = 
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -243,12 +245,41 @@ namespace WordParserLibrary
             { "ZZWMATFIZCHEMzmwzorumatfizlubchem", "ZZ/W_MAT(FIZ|CHEM) – zm. wzoru mat. (fiz. lub chem.)" }
         };
 
+        public static bool TryGetStyleInfo(string? openXmlStyleId, out StyleInfo? info)
+        {
+            info = null;
+            if (string.IsNullOrWhiteSpace(openXmlStyleId))
+            {
+                return false;
+            }
+
+            if (!StyleMap.TryGetValue(openXmlStyleId, out var displayName))
+            {
+                return false;
+            }
+
+            info = new StyleInfo(displayName, IsAmendmentDisplayName(displayName));
+            return true;
+        }
+
         public static string? TryGetOriginalStyleName(string? openXmlStyleId)
         {
             if (string.IsNullOrWhiteSpace(openXmlStyleId))
                 return null;
 
             return StyleMap.TryGetValue(openXmlStyleId, out var name) ? name : null;
+        }
+
+        private static bool IsAmendmentDisplayName(string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                return false;
+            }
+
+            return displayName.StartsWith("Z/", StringComparison.OrdinalIgnoreCase)
+                || displayName.StartsWith("ZZ/", StringComparison.OrdinalIgnoreCase)
+                || displayName.StartsWith("Z_", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

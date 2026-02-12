@@ -1,5 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
+using WordParserLibrary.Helpers;
 
 namespace WordParserLibrary.Services.Parsing
 {
@@ -104,7 +105,13 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			// Wykryj style nowelizacji (zaczynajace sie od "Z/")
+			// Wykryj style nowelizacji po mapie styli (priorytet nad heurystyką).
+			if (StyleLibraryMapper.TryGetStyleInfo(styleId, out var info) && info?.IsAmendment == true)
+			{
+				return "AMENDMENT";
+			}
+
+			// Fallback dla nietypowych styli nowelizacji spoza mapy.
 			if (styleId.StartsWith("Z/", StringComparison.OrdinalIgnoreCase))
 			{
 				return "AMENDMENT";

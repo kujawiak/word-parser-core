@@ -39,7 +39,7 @@ namespace WordParserLibrary.Services.Parsing
 			@"dodaje\s+się",
 			RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-		private static readonly Regex RepealPattern = new(
+		internal static readonly Regex RepealPattern = new(
 			@"uchyla\s+się",
 			RegexOptions.Compiled | RegexOptions.IgnoreCase);
 

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ModelDto;
 using WordParserLibrary.Helpers;
@@ -15,13 +14,6 @@ namespace WordParserLibrary.Services.Parsing
 	/// </summary>
 	public sealed class ParserOrchestrator
 	{
-		/// <summary>
-		/// Wzorzec uchylenia — natychmiastowa nowelizacja bez treści.
-		/// </summary>
-		private static readonly Regex RepealTriggerPattern = new(
-			@"uchyla\s+się",
-			RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
 		private readonly ParagraphClassifier _classifier = new();
 		private readonly ArticleBuilder _articleBuilder = new();
 		private readonly ParagraphBuilder _paragraphBuilder = new();
@@ -432,7 +424,7 @@ namespace WordParserLibrary.Services.Parsing
 		{
 			// Uchylenie — natychmiastowa nowelizacja bez treści,
 			// delegowana do istniejącego AmendmentFinalizer
-			if (RepealTriggerPattern.IsMatch(text))
+			if (AmendmentFinalizer.RepealPattern.IsMatch(text))
 			{
 				var owner = GetCurrentAmendmentOwner(context);
 				if (owner == null)

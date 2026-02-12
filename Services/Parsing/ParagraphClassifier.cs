@@ -112,7 +112,11 @@ namespace WordParserLibrary.Services.Parsing
 			}
 
 			// Fallback dla nietypowych styli nowelizacji spoza mapy.
-			if (styleId.StartsWith("Z/", StringComparison.OrdinalIgnoreCase))
+			// Prefiksy: Z/ (zmiana artykułem/punktem), ZZ/ (zmiana zmiany),
+			// Z_LIT/ (zmiana literą), Z_TIR/ (zmiana tiretem), Z_2TIR/ (podwójnym tiretem)
+			if (styleId.StartsWith("Z/", StringComparison.OrdinalIgnoreCase) ||
+				styleId.StartsWith("ZZ", StringComparison.OrdinalIgnoreCase) ||
+				styleId.StartsWith("Z_", StringComparison.OrdinalIgnoreCase))
 			{
 				return "AMENDMENT";
 			}

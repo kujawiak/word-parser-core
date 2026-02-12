@@ -62,5 +62,19 @@ namespace WordParserLibrary.Services.Parsing
 		/// akapitu, sprawdzane PRZED przetworzeniem nastepnego.
 		/// </summary>
 		public bool AmendmentTriggerDetected { get; set; }
+
+		/// <summary>
+		/// Bufor akapitow biezacej nowelizacji. Zbiera akapity od wejscia w tryb
+		/// nowelizacji az do powrotu do stylu ustawy matki, po czym deleguje
+		/// do AmendmentBuilder (iteracja 2).
+		/// </summary>
+		public AmendmentCollector AmendmentCollector { get; } = new();
+
+		/// <summary>
+		/// Encja, na ktorej wykryto ostatni trigger nowelizacji.
+		/// Przechowywana tymczasowo do momentu rozpoczecia zbierania
+		/// (Begin) w AmendmentCollector.
+		/// </summary>
+		public BaseEntity? AmendmentOwner { get; set; }
 	}
 }

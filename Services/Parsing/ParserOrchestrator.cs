@@ -303,6 +303,9 @@ namespace WordParserLibrary.Services.Parsing
 		/// Wykrywa cele nowelizacji w tresci encji implementujacej IHasAmendments.
 		/// Parsuje wzorce typu "w art. 5", "po ust. 2" itp. i zapisuje
 		/// wykryty cel w kontekscie (DetectedAmendmentTargets) dla dalszego mapowania.
+		/// Kontekst jest dziedziczony z encji nadrzednych — jesli np. punkt mowi
+		/// "w art. 1:", a litera mowi "w ust. 2 pkt 3 otrzymuje brzmienie:",
+		/// to cel litery bedzie zawierac pelna sciezke: art. 1 | ust. 2 | pkt 3.
 		/// </summary>
 		private static void DetectAmendmentTargets(ParsingContext context, BaseEntity entity)
 		{
@@ -312,7 +315,9 @@ namespace WordParserLibrary.Services.Parsing
 			if (string.IsNullOrWhiteSpace(entity.ContentText))
 				return;
 
-			var targetRef = new StructuralReference();
+			// Zacznij od kontekstu rodzica (jesli istnieje wykryty cel w encji nadrzednej)
+			var parentRef = FindParentAmendmentTargetReference(context, entity);
+			var targetRef = parentRef?.Clone() ?? new StructuralReference();
 			context.ReferenceService.UpdateLegalReference(targetRef, entity.ContentText);
 
 			// Sprawdz czy wykryto jakikolwiek cel nowelizacji
@@ -332,6 +337,24 @@ namespace WordParserLibrary.Services.Parsing
 
 			Log.Debug("Wykryto cel nowelizacji w {UnitType} [{EntityId}]: {AmendmentTarget}",
 				entity.UnitType, entity.Id, amendmentRef);
+		}
+
+		/// <summary>
+		/// Przeszukuje encje nadrzedne w hierarchii (Parent), szukajac wczesniej
+		/// wykrytego celu nowelizacji, ktorego kontekst moze byc odziedziczony.
+		/// Dzieki temu referencje rozproszone w roznych poziomach (np. "w art. 1:"
+		/// w punkcie i "w ust. 2 pkt 3" w literze) sa kumulowane w jednym celu.
+		/// </summary>
+		private static StructuralReference? FindParentAmendmentTargetReference(ParsingContext context, BaseEntity entity)
+		{
+			var current = entity.Parent;
+			while (current != null)
+			{
+				if (context.DetectedAmendmentTargets.TryGetValue(current.Guid, out var parentTarget))
+					return parentTarget.Structure;
+				current = current.Parent;
+			}
+			return null;
 		}
 
 		/// <summary>

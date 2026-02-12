@@ -21,6 +21,7 @@ namespace WordParserLibrary.Services.Parsing
 		private readonly LetterBuilder _letterBuilder = new();
 		private readonly TiretBuilder _tiretBuilder = new();
 		private readonly AmendmentBuilder _amendmentBuilder = new();
+		private readonly AmendmentFinalizer _amendmentFinalizer = new();
 		private readonly NumberingContinuityValidator _numberingValidator = new();
 		private readonly JournalReferenceService _journalReferenceService = new();
 
@@ -204,9 +205,9 @@ namespace WordParserLibrary.Services.Parsing
 		}
 
 		/// <summary>
-		/// Buduje nowelizacje z zebranych akapitow i przypisuje ja do encji-wlasciciela.
-		/// Wywolywane po zamknieciu nowelizacji (powrot do stylu ustawy matki)
-		/// lub na koncu dokumentu.
+		/// Buduje nowelizacje z zebranych akapitow i deleguje finalizacje
+		/// do AmendmentFinalizer (Faza 3). Wywolywane po zamknieciu nowelizacji
+		/// (powrot do stylu ustawy matki) lub na koncu dokumentu.
 		/// </summary>
 		private void FlushAmendmentCollector(ParsingContext context)
 		{
@@ -218,37 +219,18 @@ namespace WordParserLibrary.Services.Parsing
 				return;
 			}
 
-			var input = new AmendmentBuildInput(
+			// Faza 2: budowanie treści nowelizacji
+			var buildInput = new AmendmentBuildInput(
 				collector.Paragraphs,
 				collector.Target,
 				AmendmentOperationType.Modification);
 
-			var content = _amendmentBuilder.Build(input);
+			var content = _amendmentBuilder.Build(buildInput);
 
-			var amendment = new Amendment
-			{
-				OperationType = input.OperationType,
-				Content = content
-			};
-
-			if (collector.Target != null)
-			{
-				amendment.Targets.Add(collector.Target);
-			}
-
-			if (collector.Owner is IHasAmendments hasAmendments)
-			{
-				hasAmendments.Amendments.Add(amendment);
-				Log.Information(
-					"Przypisano nowelizację do {UnitType} [{EntityId}]: {Amendment}",
-					collector.Owner.UnitType, collector.Owner.Id, amendment);
-			}
-			else
-			{
-				Log.Warning(
-					"Nie można przypisać nowelizacji — właściciel {Owner} nie implementuje IHasAmendments",
-					collector.Owner?.Id ?? "null");
-			}
+			// Faza 3: finalizacja — detekcja operacji, linkowanie celów/JournalInfo,
+			// przypisanie do właściciela, walidacja
+			var finalizerInput = new AmendmentFinalizerInput(content, collector, context);
+			_amendmentFinalizer.Finalize(finalizerInput);
 
 			collector.Reset();
 			context.AmendmentOwner = null;

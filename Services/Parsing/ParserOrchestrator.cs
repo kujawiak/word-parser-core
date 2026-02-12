@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ModelDto;
 using WordParserLibrary.Helpers;
@@ -14,6 +15,13 @@ namespace WordParserLibrary.Services.Parsing
 	/// </summary>
 	public sealed class ParserOrchestrator
 	{
+		/// <summary>
+		/// Wzorzec uchylenia — natychmiastowa nowelizacja bez treści.
+		/// </summary>
+		private static readonly Regex RepealTriggerPattern = new(
+			@"uchyla\s+się",
+			RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
 		private readonly ParagraphClassifier _classifier = new();
 		private readonly ArticleBuilder _articleBuilder = new();
 		private readonly ParagraphBuilder _paragraphBuilder = new();
@@ -412,9 +420,40 @@ namespace WordParserLibrary.Services.Parsing
 		/// Sprawdza czy przetworzony akapit zawiera zwrot rozpoczynajacy nowelizacje.
 		/// Wywolywane PO przetworzeniu akapitu (po budowaniu encji),
 		/// aby kolejny akapit bez stylu zostal oznaczony jako tresc nowelizacji.
+		///
+		/// Obsluguje dwa scenariusze:
+		/// 1. Uchylenie ("uchyla sie") — natychmiastowe utworzenie nowelizacji
+		///    bez tresci (Repeal) poprzez AmendmentFinalizer. Uchylenie nie ma
+		///    nastepujacych akapitow z trescia nowelizacji.
+		/// 2. Zmiana brzmienia / dodanie ("otrzymuje brzmienie:", "w brzmieniu:") —
+		///    ustawienie triggera, aby nastepne akapity zostaly zebrane jako tresc.
 		/// </summary>
-		private static void DetectAmendmentTrigger(ParsingContext context, string text)
+		private void DetectAmendmentTrigger(ParsingContext context, string text)
 		{
+			// Uchylenie — natychmiastowa nowelizacja bez treści,
+			// delegowana do istniejącego AmendmentFinalizer
+			if (RepealTriggerPattern.IsMatch(text))
+			{
+				var owner = GetCurrentAmendmentOwner(context);
+				if (owner == null)
+				{
+					Log.Warning("Uchylenie: brak właściciela");
+					return;
+				}
+
+				var collector = context.AmendmentCollector;
+				var target = context.DetectedAmendmentTargets.TryGetValue(owner.Guid, out var t) ? t : null;
+				collector.Begin(owner, target);
+
+				var content = new AmendmentContent { ObjectType = AmendmentObjectType.None };
+				var finalizerInput = new AmendmentFinalizerInput(content, collector, context);
+				_amendmentFinalizer.Finalize(finalizerInput);
+
+				collector.Reset();
+				return;
+			}
+
+			// Zmiana brzmienia / dodanie — trigger dla kolejnych akapitów
 			if (text.Contains("otrzymuje brzmienie:", StringComparison.OrdinalIgnoreCase) ||
 				text.Contains("w brzmieniu:", StringComparison.OrdinalIgnoreCase) ||
 				text.Contains("otrzymują brzmienie:", StringComparison.OrdinalIgnoreCase))

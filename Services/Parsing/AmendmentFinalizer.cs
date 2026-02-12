@@ -40,7 +40,7 @@ namespace WordParserLibrary.Services.Parsing
 			RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
 		private static readonly Regex RepealPattern = new(
-			@"(?:uchyla\s+się|skreśla\s+się|traci\s+moc|tracą\s+moc)",
+			@"uchyla\s+się",
 			RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
 		private static readonly Regex ModificationPattern = new(

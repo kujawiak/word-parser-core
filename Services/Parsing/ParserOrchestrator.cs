@@ -76,9 +76,12 @@ namespace WordParserLibrary.Services.Parsing
 				context.CurrentTiretIndex = 0;
 
 				UpdateStructuralReference(context, result.Article);
-				if (result.Paragraph != null && !result.Paragraph.IsImplicit)
+				if (result.Paragraph != null)
 				{
-					UpdateStructuralReference(context, result.Paragraph);
+					if (!result.Paragraph.IsImplicit)
+					{
+						UpdateStructuralReference(context, result.Paragraph);
+					}
 					DetectAmendmentTargets(context, result.Paragraph);
 				}
 				DetectAmendmentTrigger(context, text);

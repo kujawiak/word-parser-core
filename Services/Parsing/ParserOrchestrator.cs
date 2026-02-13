@@ -58,6 +58,14 @@ namespace WordParserLibrary.Services.Parsing
 				FlushAmendmentCollector(context);
 			}
 
+			// Wyjscie z nowelizacji, gdy pojawia sie nieostylowany trigger nowego punktu/ustepu
+			if (ShouldExitAmendmentForNewParentLawTrigger(context, classification, text))
+			{
+				Log.Debug("Zamknieto nowelizacje: wykryto nowy akapit z triggerem bez stylu ustawy matki");
+				FlushAmendmentCollector(context);
+				context.InsideAmendment = false;
+			}
+
 			// Zbieraj akapity nowelizacji (zamiast pomijania)
 			if (classification.IsAmendmentContent || context.InsideAmendment)
 			{
@@ -406,6 +414,24 @@ namespace WordParserLibrary.Services.Parsing
 
 			// 4. Brak stylu + juz w nowelizacji → pozostaje w nowelizacji
 			// 5. Brak stylu + normalny tryb → przetwarzane normalnie (z fallback warning)
+		}
+
+		private static bool ShouldExitAmendmentForNewParentLawTrigger(
+			ParsingContext context,
+			ClassificationResult classification,
+			string text)
+		{
+			if (!context.InsideAmendment)
+				return false;
+
+			if (classification.IsAmendmentContent || classification.StyleType != null)
+				return false;
+
+			if (classification.Kind == ParagraphKind.Unknown)
+				return false;
+
+			return AmendmentFinalizer.ModificationPattern.IsMatch(text) ||
+				AmendmentFinalizer.RepealPattern.IsMatch(text);
 		}
 
 		/// <summary>

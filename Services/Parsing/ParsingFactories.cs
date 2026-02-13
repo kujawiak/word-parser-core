@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.RegularExpressions;
 using ModelDto;
 using ModelDto.EditorialUnits;
 using DtoArticle = ModelDto.EditorialUnits.Article;
@@ -15,6 +16,7 @@ namespace WordParserLibrary.Services.Parsing
 	public static class ParsingFactories
 	{
 		private static readonly EntityNumberService _numberService = new();
+		private static readonly Regex WrapUpPrefixPattern = new(@"^(\u2013|-)\s*", RegexOptions.Compiled);
 
 		/// <summary>
 		/// Usuwa prefiks numeru ustepu (np. "1. ") z tekstu.
@@ -39,6 +41,12 @@ namespace WordParserLibrary.Services.Parsing
 		/// </summary>
 		public static string StripTiretPrefix(string text)
 			=> ParagraphClassifier.TiretStripPattern.Replace(text.Trim(), "", 1);
+
+		/// <summary>
+		/// Usuwa prefiks wrapUp (polpauza lub myślnik) z tekstu.
+		/// </summary>
+		public static string StripWrapUpPrefix(string text)
+			=> WrapUpPrefixPattern.Replace(text.Trim(), "", 1);
 
 		/// <summary>
 		/// Dzieli tekst na segmenty (zdania). Podział następuje w miejscu,
@@ -416,7 +424,7 @@ namespace WordParserLibrary.Services.Parsing
 			if (hasCommonParts.CommonParts.Any(cp => cp.Type == CommonPartType.WrapUp))
 				return false;
 
-			var contentText = StripTiretPrefix(text);
+			var contentText = StripWrapUpPrefix(text);
 			if (string.IsNullOrWhiteSpace(contentText))
 				return false;
 

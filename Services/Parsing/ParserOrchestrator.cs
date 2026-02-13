@@ -38,11 +38,13 @@ namespace WordParserLibrary.Services.Parsing
 		/// </summary>
 		public void ProcessParagraph(Paragraph paragraph, ParsingContext context)
 		{
-			var text = paragraph.InnerText.Sanitize().Trim();
-			if (string.IsNullOrEmpty(text))
+			var rawText = paragraph.InnerText.Trim();
+			if (string.IsNullOrEmpty(rawText))
 			{
 				return;
 			}
+
+			var text = rawText.Sanitize().Trim();
 
 			var styleId = paragraph.StyleId();
 			var classification = _classifier.Classify(text, styleId);
@@ -74,7 +76,7 @@ namespace WordParserLibrary.Services.Parsing
 				return;
 			}
 
-			if (TryHandleWrapUpCommonPart(context, text, styleId))
+			if (TryHandleWrapUpCommonPart(context, rawText, styleId))
 			{
 				return;
 			}
@@ -427,7 +429,7 @@ namespace WordParserLibrary.Services.Parsing
 			if (!TryGetWrapUpTarget(styleId, out var targetKind))
 				return false;
 
-			if (!ParagraphClassifier.IsTiretByText(text))
+			if (!IsWrapUpByText(text))
 			{
 				Log.Warning(
 					"WrapUp pominiety: styl={StyleId}, brak polpauzy w tekscie: {Text}",
@@ -481,6 +483,22 @@ namespace WordParserLibrary.Services.Parsing
 			}
 
 			return true;
+		}
+
+		private static bool IsWrapUpByText(string text)
+		{
+			if (string.IsNullOrWhiteSpace(text))
+				return false;
+
+			var trimmed = text.TrimStart();
+			if (trimmed.Length < 2)
+				return false;
+
+			var first = trimmed[0];
+			if (first != '\u2013' && first != '-')
+				return false;
+
+			return char.IsWhiteSpace(trimmed[1]);
 		}
 
 		private static bool TryGetWrapUpTarget(string? styleId, out AmendmentTargetKind targetKind)

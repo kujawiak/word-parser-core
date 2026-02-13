@@ -402,5 +402,34 @@ namespace WordParserLibrary.Services.Parsing
 
 			hasCommonParts.CommonParts.Add(commonPart);
 		}
+
+		/// <summary>
+		/// Tworzy CommonPart typu WrapUp na podstawie akapitu po liscie.
+		/// Warunki wstepne: rodzic implementuje IHasCommonParts i nie ma jeszcze WrapUp.
+		/// Zwraca true, gdy dodano CommonPart.
+		/// </summary>
+		public static bool AttachWrapUpCommonPart(BaseEntity parent, string text)
+		{
+			if (parent is not IHasCommonParts hasCommonParts) return false;
+			if (string.IsNullOrWhiteSpace(text)) return false;
+
+			if (hasCommonParts.CommonParts.Any(cp => cp.Type == CommonPartType.WrapUp))
+				return false;
+
+			var contentText = StripTiretPrefix(text);
+			if (string.IsNullOrWhiteSpace(contentText))
+				return false;
+
+			var commonPart = new CommonPart(
+				CommonPartType.WrapUp,
+				parent.Id,
+				contentText)
+			{
+				Parent = parent
+			};
+
+			hasCommonParts.CommonParts.Add(commonPart);
+			return true;
+		}
 	}
 }

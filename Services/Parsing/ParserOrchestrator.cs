@@ -4,6 +4,7 @@ using ModelDto;
 using WordParserLibrary.Helpers;
 using WordParserLibrary.Services.Parsing.Builders;
 using Serilog;
+using WordParserLibrary;
 
 namespace WordParserLibrary.Services.Parsing
 {
@@ -70,6 +71,11 @@ namespace WordParserLibrary.Services.Parsing
 			if (classification.IsAmendmentContent || context.InsideAmendment)
 			{
 				CollectAmendmentParagraph(context, text, styleId);
+				return;
+			}
+
+			if (TryHandleWrapUpCommonPart(context, text, styleId))
+			{
 				return;
 			}
 
@@ -414,6 +420,95 @@ namespace WordParserLibrary.Services.Parsing
 
 			// 4. Brak stylu + juz w nowelizacji → pozostaje w nowelizacji
 			// 5. Brak stylu + normalny tryb → przetwarzane normalnie (z fallback warning)
+		}
+
+		private static bool TryHandleWrapUpCommonPart(ParsingContext context, string text, string? styleId)
+		{
+			if (!TryGetWrapUpTarget(styleId, out var targetKind))
+				return false;
+
+			if (!ParagraphClassifier.IsTiretByText(text))
+			{
+				Log.Warning(
+					"WrapUp pominiety: styl={StyleId}, brak polpauzy w tekscie: {Text}",
+					styleId,
+					text);
+				return true;
+			}
+
+			BaseEntity? parent = targetKind switch
+			{
+				AmendmentTargetKind.Point => context.CurrentParagraph,
+				AmendmentTargetKind.Letter => context.CurrentPoint,
+				AmendmentTargetKind.Tiret => context.CurrentLetter,
+				_ => null
+			};
+
+			if (parent == null)
+			{
+				Log.Warning(
+					"WrapUp pominiety: brak rodzica dla {TargetKind} (styl={StyleId})",
+					targetKind,
+					styleId);
+				return true;
+			}
+
+			var hasListItems = targetKind switch
+			{
+				AmendmentTargetKind.Point => context.CurrentParagraph?.Points.Count > 0,
+				AmendmentTargetKind.Letter => context.CurrentPoint?.Letters.Count > 0,
+				AmendmentTargetKind.Tiret => context.CurrentLetter?.Tirets.Count > 0,
+				_ => false
+			};
+
+			if (!hasListItems)
+			{
+				Log.Warning(
+					"WrapUp pominiety: brak elementow listy dla {TargetKind} (styl={StyleId})",
+					targetKind,
+					styleId);
+				return true;
+			}
+
+			var attached = ParsingFactories.AttachWrapUpCommonPart(parent, text);
+			if (attached)
+			{
+				Log.Debug("WrapUp dodany dla {ParentId}", parent.Id);
+			}
+			else
+			{
+				Log.Debug("WrapUp pominiety (duplikat lub pusty tekst) dla {ParentId}", parent.Id);
+			}
+
+			return true;
+		}
+
+		private static bool TryGetWrapUpTarget(string? styleId, out AmendmentTargetKind targetKind)
+		{
+			targetKind = AmendmentTargetKind.Unknown;
+			if (!StyleLibraryMapper.TryGetStyleInfo(styleId, out var info) || info == null)
+				return false;
+
+			var name = info.DisplayName;
+			if (name.StartsWith("CZ_WSP_PKT –", StringComparison.OrdinalIgnoreCase))
+			{
+				targetKind = AmendmentTargetKind.Point;
+				return true;
+			}
+
+			if (name.StartsWith("CZ_WSP_LIT –", StringComparison.OrdinalIgnoreCase))
+			{
+				targetKind = AmendmentTargetKind.Letter;
+				return true;
+			}
+
+			if (name.StartsWith("CZ_WSP_TIR –", StringComparison.OrdinalIgnoreCase))
+			{
+				targetKind = AmendmentTargetKind.Tiret;
+				return true;
+			}
+
+			return false;
 		}
 
 		private static bool ShouldExitAmendmentForNewParentLawTrigger(

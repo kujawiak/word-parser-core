@@ -85,6 +85,7 @@ namespace WordParserLibrary.Services
 
             if (!string.IsNullOrEmpty(dto.Superscript))
             {
+                // TODO: Po zmianie ZTP ujmować w nawiasy kwadratowe, np. [1]
                 sb.Append($"^{dto.Superscript}");
             }
 

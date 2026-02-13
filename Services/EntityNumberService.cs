@@ -9,6 +9,7 @@ namespace WordParserLibrary.Services
     /// </summary>
     public class EntityNumberService
     {
+        private static readonly Regex NumericPrefix = new(@"^(\d+)(.*)$", RegexOptions.Compiled);
         /// <summary>
         /// Parsuje ciąg znaków na EntityNumberDto, wyodrębniając komponenty numeru.
         /// </summary>
@@ -38,7 +39,7 @@ namespace WordParserLibrary.Services
             v = v.TrimEnd('.').Trim();
 
             // Wyodrębnij część liczbową na początkuu
-            var match = Regex.Match(v, "^(\\d+)(.*)$");
+            var match = NumericPrefix.Match(v);
             if (match.Success)
             {
                 if (int.TryParse(match.Groups[1].Value, out var num))

@@ -80,10 +80,13 @@ namespace WordParserLibrary.Services
 			}
 		}
 
+		private static readonly Regex ArticlePrefixStrip = new(
+			@"^(Art\.|\u00a7)\s*[\w\d]+\.?\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
 		private static bool StartsWithAmendingFormula(string contentText)
 		{
 			var text = contentText.Trim();
-			text = Regex.Replace(text, @"^(Art\.|§)\s*[\w\d]+\.?\s*", string.Empty, RegexOptions.IgnoreCase);
+			text = ArticlePrefixStrip.Replace(text, string.Empty, 1);
 			return text.StartsWith("W ustawie z dnia", StringComparison.OrdinalIgnoreCase);
 		}
 	}

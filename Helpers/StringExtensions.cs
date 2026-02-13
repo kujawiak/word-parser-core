@@ -4,15 +4,19 @@ namespace WordParserLibrary
 {
     public static class StringExtensions
     {
+        private static readonly Regex WhitespaceCollapse = new(@"\s+", RegexOptions.Compiled);
+        private static readonly Regex OrdinalCapture = new(@"^([^\)]+)\)", RegexOptions.Compiled);
+        private static readonly Regex DateCapture = new(@"(\d{1,2})\s+(\w+)\s+(\d{4})", RegexOptions.Compiled);
+
         public static string Sanitize(this string input)
         {
-            input = Regex.Replace(input, @"\s+", " ");
-            return input.Replace("–", "-");
+            input = WhitespaceCollapse.Replace(input, " ");
+            return input.Replace("\u2013", "-");
         }
 
         public static string ExtractOrdinal(this string input)
         {
-            var match = Regex.Match(input, @"^([^\)]+)\)");
+            var match = OrdinalCapture.Match(input);
             return match.Success ? match.Groups[1].Value : "Unknown";
         }
 
@@ -26,7 +30,7 @@ namespace WordParserLibrary
         public static DateTime ExtractDate(this string input)
         {
             //sample input: "z dnia 29 maja 2020 r."
-            var match = Regex.Match(input, @"(\d{1,2})\s+(\w+)\s+(\d{4})");
+            var match = DateCapture.Match(input);
 
             if (!match.Success)
             {

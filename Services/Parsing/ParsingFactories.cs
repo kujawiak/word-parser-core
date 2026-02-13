@@ -1,5 +1,4 @@
 using System.Linq;
-using System.Text.RegularExpressions;
 using ModelDto;
 using ModelDto.EditorialUnits;
 using DtoArticle = ModelDto.EditorialUnits.Article;
@@ -17,36 +16,29 @@ namespace WordParserLibrary.Services.Parsing
 	{
 		private static readonly EntityNumberService _numberService = new();
 
-		// Regexy do usuwania prefiksu numeru z tresci
-		private const string OptionalQuotePrefix = "(?:[\"\\u201E\\u201C\\u201D]\\s*)?";
-		private static readonly Regex ParagraphNumberPrefix = new($@"^{OptionalQuotePrefix}\d+[a-zA-Z]*\.\s+", RegexOptions.Compiled);
-		private static readonly Regex PointNumberPrefix = new($@"^{OptionalQuotePrefix}\d+[a-zA-Z]*\)\s*", RegexOptions.Compiled);
-		private static readonly Regex LetterNumberPrefix = new($@"^{OptionalQuotePrefix}[a-zA-Z]{{1,5}}\)\s*", RegexOptions.Compiled);
-		private static readonly Regex TiretPrefix = new(@"^\u2013+\s*", RegexOptions.Compiled);
-
 		/// <summary>
 		/// Usuwa prefiks numeru ustepu (np. "1. ") z tekstu.
 		/// </summary>
 		public static string StripParagraphPrefix(string text)
-			=> ParagraphNumberPrefix.Replace(text.Trim(), "", 1);
+			=> ParagraphClassifier.ParagraphPattern.Replace(text.Trim(), "", 1);
 
 		/// <summary>
 		/// Usuwa prefiks numeru punktu (np. "1) ") z tekstu.
 		/// </summary>
 		public static string StripPointPrefix(string text)
-			=> PointNumberPrefix.Replace(text.Trim(), "", 1);
+			=> ParagraphClassifier.PointPattern.Replace(text.Trim(), "", 1);
 
 		/// <summary>
 		/// Usuwa prefiks litery (np. "a) ") z tekstu.
 		/// </summary>
 		public static string StripLetterPrefix(string text)
-			=> LetterNumberPrefix.Replace(text.Trim(), "", 1);
+			=> ParagraphClassifier.LetterPattern.Replace(text.Trim(), "", 1);
 
 		/// <summary>
 		/// Usuwa prefiks tiretu (np. "– ") z tekstu.
 		/// </summary>
 		public static string StripTiretPrefix(string text)
-			=> TiretPrefix.Replace(text.Trim(), "", 1);
+			=> ParagraphClassifier.TiretStripPattern.Replace(text.Trim(), "", 1);
 
 		/// <summary>
 		/// Dzieli tekst na segmenty (zdania). Podział następuje w miejscu,
@@ -262,7 +254,7 @@ namespace WordParserLibrary.Services.Parsing
 				return CreateImplicitParagraph(article);
 			}
 
-			var match = Regex.Match(normalizedTail, "^(\\d+[a-zA-Z]*)\\.\\s+", RegexOptions.IgnoreCase);
+			var match = ParagraphClassifier.ParagraphNumberCapture.Match(normalizedTail);
 			if (match.Success)
 			{
 				var contentText = StripParagraphPrefix(normalizedTail);
@@ -317,7 +309,7 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text, $"^{OptionalQuotePrefix}Art\\.?\\s*(\\d+[a-zA-Z]*)", RegexOptions.IgnoreCase);
+			var match = ParagraphClassifier.ArticleNumberCapture.Match(text);
 			if (match.Success)
 			{
 				return _numberService.Parse(match.Groups[1].Value);
@@ -333,7 +325,7 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}(\\d+[a-zA-Z]*)\\.\\s+", RegexOptions.IgnoreCase);
+			var match = ParagraphClassifier.ParagraphNumberCapture.Match(text.Trim());
 			if (match.Success)
 			{
 				return _numberService.Parse(match.Groups[1].Value);
@@ -349,7 +341,7 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}(\\d+[a-zA-Z]*)\\)\\s*", RegexOptions.IgnoreCase);
+			var match = ParagraphClassifier.PointNumberCapture.Match(text.Trim());
 			if (match.Success)
 			{
 				return _numberService.Parse(match.Groups[1].Value);
@@ -365,13 +357,13 @@ namespace WordParserLibrary.Services.Parsing
 				return null;
 			}
 
-			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}([a-zA-Z]{{1,5}})\\)\\s*", RegexOptions.IgnoreCase);
+			var match = ParagraphClassifier.LetterNumberCapture.Match(text.Trim());
 			return match.Success ? _numberService.Parse(match.Groups[1].Value) : null;
 		}
 
 		public static string GetArticleTail(string text)
 		{
-			var match = Regex.Match(text.Trim(), $"^{OptionalQuotePrefix}Art\\.?\\s*\\d+[a-zA-Z]*\\.?\\s*(.*)$", RegexOptions.IgnoreCase);
+			var match = ParagraphClassifier.ArticleTailCapture.Match(text.Trim());
 			return match.Success ? match.Groups[1].Value : string.Empty;
 		}
 

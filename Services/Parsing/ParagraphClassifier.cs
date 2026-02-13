@@ -28,9 +28,55 @@ namespace WordParserLibrary.Services.Parsing
 
 	/// <summary>
 	/// Klasyfikator akapitow. Rozpoznaje typ jednostki na bazie stylu i tekstu.
+	/// Zawiera skompilowane wzorce regex wspoldzielone z ParsingFactories i AmendmentBuilder.
 	/// </summary>
 	public sealed class ParagraphClassifier : IParagraphClassifier
 	{
+		// ============================================================
+		// Wspoldzielone wzorce regex (compiled, reużywane w ParsingFactories)
+		// ============================================================
+
+		/// <summary>Opcjonalny prefiks cytatu otwierajacego („ " ") w tekście akapitu.</summary>
+		internal const string OptionalQuotePrefix = "(?:[\"\\u201E\\u201C\\u201D]\\s*)?";
+
+		internal static readonly Regex ArticlePattern = new(
+			$@"^{OptionalQuotePrefix}Art\.?\s*\d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		internal static readonly Regex ParagraphPattern = new(
+			$@"^{OptionalQuotePrefix}\d+[a-zA-Z]*\.\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		internal static readonly Regex PointPattern = new(
+			$@"^{OptionalQuotePrefix}\d+[a-zA-Z]*\)\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		internal static readonly Regex LetterPattern = new(
+			$@"^{OptionalQuotePrefix}[a-zA-Z]{{1,5}}\)\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		internal static readonly Regex TiretPattern = new(
+			@"^\u2013+\s+", RegexOptions.Compiled);
+
+		/// <summary>Artykuł z grupą przechwytującą numer (do ParseArticleNumber).</summary>
+		internal static readonly Regex ArticleNumberCapture = new(
+			$@"^{OptionalQuotePrefix}Art\.?\s*(\d+[a-zA-Z]*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		/// <summary>Artykuł z przechwyceniem ogona (do GetArticleTail).</summary>
+		internal static readonly Regex ArticleTailCapture = new(
+			$@"^{OptionalQuotePrefix}Art\.?\s*\d+[a-zA-Z]*\.?\s*(.*)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		/// <summary>Numer ustępu z grupą przechwytującą (do ParseParagraphNumber).</summary>
+		internal static readonly Regex ParagraphNumberCapture = new(
+			$@"^{OptionalQuotePrefix}(\d+[a-zA-Z]*)\.\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		/// <summary>Numer punktu z grupą przechwytującą (do ParsePointNumber).</summary>
+		internal static readonly Regex PointNumberCapture = new(
+			$@"^{OptionalQuotePrefix}(\d+[a-zA-Z]*)\)\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		/// <summary>Numer litery z grupą przechwytującą (do ParseLetterNumber).</summary>
+		internal static readonly Regex LetterNumberCapture = new(
+			$@"^{OptionalQuotePrefix}([a-zA-Z]{{1,5}})\)\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+		/// <summary>Prefiks tiretu do usuwania (bez wymagania spacji).</summary>
+		internal static readonly Regex TiretStripPattern = new(
+			@"^\u2013+\s*", RegexOptions.Compiled);
 		/// <summary>
 		/// Klasyfikuje akapit do typu jednostki (Art/Ust/Pkt/Lit/Tir).
 		/// </summary>
@@ -147,27 +193,27 @@ namespace WordParserLibrary.Services.Parsing
 
 		public static bool IsArticleByText(string text)
 		{
-			return Regex.IsMatch(text.Trim(), "^(?:[\"\u201E\u201C\u201D]\\s*)?Art\\.?\\s*\\d+", RegexOptions.IgnoreCase);
+			return ArticlePattern.IsMatch(text.Trim());
 		}
 
 		public static bool IsParagraphByText(string text)
 		{
-			return Regex.IsMatch(text, "^(?:[\"\u201E\u201C\u201D]\\s*)?\\d+[a-zA-Z]*\\.\\s+", RegexOptions.IgnoreCase);
+			return ParagraphPattern.IsMatch(text);
 		}
 
 		public static bool IsPointByText(string text)
 		{
-			return Regex.IsMatch(text, "^(?:[\"\u201E\u201C\u201D]\\s*)?\\d+[a-zA-Z]*\\)\\s*", RegexOptions.IgnoreCase);
+			return PointPattern.IsMatch(text);
 		}
 
 		public static bool IsLetterByText(string text)
 		{
-			return Regex.IsMatch(text, "^(?:[\"\u201E\u201C\u201D]\\s*)?[a-zA-Z]{1,5}\\)\\s*", RegexOptions.IgnoreCase);
+			return LetterPattern.IsMatch(text);
 		}
 
 		public static bool IsTiretByText(string text)
 		{
-			return Regex.IsMatch(text, "^\\u2013+\\s+");
+			return TiretPattern.IsMatch(text);
 		}
 	}
 }

@@ -10,6 +10,22 @@ namespace WordParserLibrary.Services
     /// </summary>
     public class LegalReferenceService
     {
+        private static readonly Regex ArticleRef = new(
+            @"(?:(?:po|Po|w|W)\s+)?art\.\s*([a-zA-Z0-9]+)",
+            RegexOptions.Compiled);
+
+        private static readonly Regex ParagraphRef = new(
+            @"(?:(?:po|Po|w|W)\s+)?ust\.\s*([a-zA-Z0-9]+)",
+            RegexOptions.Compiled);
+
+        private static readonly Regex PointRef = new(
+            @"(?:(?:po|Po|w|W)\s+)?pkt\s*([a-zA-Z0-9]+)",
+            RegexOptions.Compiled);
+
+        private static readonly Regex LetterRef = new(
+            @"(?:(?:po|Po|w|W)\s+)?lit\.\s*([a-zA-Z])",
+            RegexOptions.Compiled);
+
         /// <summary>
         /// Aktualizuje odniesienia w obiekcie StructuralReference na podstawie treści encji.
         /// Szuka wzorców takich jak "art. 5", "ust. 2", "pkt 3a", "lit. b", "tiret 1".
@@ -21,30 +37,26 @@ namespace WordParserLibrary.Services
 
             if (reference.Article == null)
             {
-                var regex = new Regex(@"(?:(?:po|Po|w|W)\s+)?art\.\s*([a-zA-Z0-9]+)");
-                var match = regex.Match(contentText);
+                var match = ArticleRef.Match(contentText);
                 if (match.Success) reference.Article = match.Groups[1].Value;
             }
 
             if (reference.Paragraph == null)
             {
-                var subsectionRegex = new Regex(@"(?:(?:po|Po|w|W)\s+)?ust\.\s*([a-zA-Z0-9]+)");
-                var subsectionMatch = subsectionRegex.Match(contentText);
-                if (subsectionMatch.Success) reference.Paragraph = subsectionMatch.Groups[1].Value;
+                var match = ParagraphRef.Match(contentText);
+                if (match.Success) reference.Paragraph = match.Groups[1].Value;
             }
 
             if (reference.Point == null)
             {
-                var pointRegex = new Regex(@"(?:(?:po|Po|w|W)\s+)?pkt\s*([a-zA-Z0-9]+)");
-                var pointMatch = pointRegex.Match(contentText);
-                if (pointMatch.Success) reference.Point = pointMatch.Groups[1].Value;
+                var match = PointRef.Match(contentText);
+                if (match.Success) reference.Point = match.Groups[1].Value;
             }
 
             if (reference.Letter == null)
             {
-                var letterRegex = new Regex(@"(?:(?:po|Po|w|W)\s+)?lit\.\s*([a-zA-Z])");
-                var letterMatch = letterRegex.Match(contentText);
-                if (letterMatch.Success) reference.Letter = letterMatch.Groups[1].Value;
+                var match = LetterRef.Match(contentText);
+                if (match.Success) reference.Letter = match.Groups[1].Value;
             }
         }
 

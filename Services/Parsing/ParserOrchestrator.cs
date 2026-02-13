@@ -446,9 +446,7 @@ namespace WordParserLibrary.Services.Parsing
 			}
 
 			// Zmiana brzmienia / dodanie — trigger dla kolejnych akapitów
-			if (text.Contains("otrzymuje brzmienie:", StringComparison.OrdinalIgnoreCase) ||
-				text.Contains("w brzmieniu:", StringComparison.OrdinalIgnoreCase) ||
-				text.Contains("otrzymują brzmienie:", StringComparison.OrdinalIgnoreCase))
+			if (AmendmentFinalizer.ModificationPattern.IsMatch(text))
 			{
 				context.AmendmentTriggerDetected = true;
 				context.AmendmentOwner = GetCurrentAmendmentOwner(context);

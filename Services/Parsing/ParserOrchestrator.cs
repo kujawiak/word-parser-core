@@ -38,7 +38,7 @@ namespace WordParserLibrary.Services.Parsing
 		/// </summary>
 		public void ProcessParagraph(Paragraph paragraph, ParsingContext context)
 		{
-			var rawText = paragraph.InnerText.Trim();
+			var rawText = paragraph.GetFullText().Trim();
 			if (string.IsNullOrEmpty(rawText))
 			{
 				return;

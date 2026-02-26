@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Packaging;
 using Word = DocumentFormat.OpenXml.Wordprocessing;
 using ModelDto;
 using ModelDto.SystematizingUnits;
+using WordParserLibrary.Exceptions;
 using WordParserLibrary.Services.Parsing;
 
 namespace WordParserLibrary
@@ -19,7 +20,7 @@ namespace WordParserLibrary
 		public static LegalDocument Parse(WordprocessingDocument wordDocument)
 		{
 			var mainPart = wordDocument.MainDocumentPart ??
-				throw new InvalidOperationException("MainDocumentPart is null.");
+				throw new ParsingException("MainDocumentPart dokumentu jest null - plik moze byc uszkodzony lub pusty.");
 
 			var document = new LegalDocument();
 			var subchapter = GetDefaultSubchapter(document);

@@ -38,7 +38,7 @@ namespace WordParserLibrary.Services.Parsing
 		/// (art. -> ust. -> pkt -> lit. -> tiret). Aktualizowana przez orkiestrator
 		/// po kazdym zbudowaniu encji.
 		/// </summary>
-		public StructuralReference CurrentStructuralReference { get; } = new();
+		public StructuralReference CurrentStructuralReference { get; set; } = new();
 
 		/// <summary>
 		/// Wykryte cele nowelizacji w tresci jednostek redakcyjnych.

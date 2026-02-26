@@ -76,5 +76,11 @@ namespace WordParserLibrary.Services.Parsing
 		/// (Begin) w AmendmentCollector.
 		/// </summary>
 		public BaseEntity? AmendmentOwner { get; set; }
+
+		/// <summary>
+		/// Teksty akapitów bieżącego artykułu — dostarczane jako kontekst warstwie AI
+		/// w <see cref="LayeredParagraphClassifier"/>. Czyszczone przy każdym nowym artykule.
+		/// </summary>
+		public List<string> CurrentArticleTexts { get; } = new();
 	}
 }

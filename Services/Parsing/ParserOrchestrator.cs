@@ -1,5 +1,6 @@
 using DocumentFormat.OpenXml.Wordprocessing;
 using WordParserLibrary.Helpers;
+using WordParserLibrary.Services.Parsing.Classification;
 using Serilog;
 
 namespace WordParserLibrary.Services.Parsing
@@ -11,9 +12,23 @@ namespace WordParserLibrary.Services.Parsing
 	/// </summary>
 	public sealed class ParserOrchestrator
 	{
-		private readonly ParagraphClassifier _classifier = new();
+		private readonly IParagraphClassifier _classifier;
 		private readonly AmendmentStateManager _amendmentManager = new();
 		private readonly StructureProcessor _structureProcessor = new();
+
+		/// <summary>
+		/// Konstruktor domyślny — używa ParagraphClassifier (tryb legacy).
+		/// </summary>
+		public ParserOrchestrator() : this(null) { }
+
+		/// <summary>
+		/// Konstruktor z wstrzykiwaniem klasyfikatora — umożliwia użycie
+		/// <see cref="LayeredParagraphClassifier"/> lub mocka w testach.
+		/// </summary>
+		public ParserOrchestrator(IParagraphClassifier? classifier)
+		{
+			_classifier = classifier ?? new ParagraphClassifier();
+		}
 
 		/// <summary>
 		/// Przetwarza pojedynczy akapit i aktualizuje stan kontekstu.
@@ -30,9 +45,28 @@ namespace WordParserLibrary.Services.Parsing
 			if (string.IsNullOrEmpty(rawText))
 				return;
 
-			var text = rawText.Sanitize().Trim();
+			var text    = rawText.Sanitize().Trim();
 			var styleId = paragraph.StyleId();
-			var classification = _classifier.Classify(text, styleId);
+
+			ClassificationResult classification;
+			if (_classifier is LayeredParagraphClassifier layered)
+			{
+				// Przekaż kontekst artykułu dla warstwy AI
+				classification = layered.Classify(new ClassificationInput(text, styleId)
+				{
+					ArticleContext = context.CurrentArticleTexts,
+				});
+			}
+			else
+			{
+				classification = _classifier.Classify(text, styleId);
+			}
+
+			// Zbieraj teksty akapitów bieżącego artykułu (kontekst dla warstwy AI)
+			if (classification.Kind == ParagraphKind.Article)
+				context.CurrentArticleTexts.Clear();
+			if (!classification.IsAmendmentContent)
+				context.CurrentArticleTexts.Add(text);
 
 			// Zapamietaj stan nowelizacji PRZED aktualizacja
 			bool wasInsideAmendment = context.InsideAmendment;

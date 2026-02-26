@@ -4,28 +4,6 @@ using WordParserLibrary.Helpers;
 
 namespace WordParserLibrary.Services.Parsing
 {
-	public enum ParagraphKind
-	{
-		Article,
-		Paragraph,
-		Point,
-		Letter,
-		Tiret,
-		Unknown
-	}
-
-	/// <summary>
-	/// Wynik klasyfikacji akapitu: typ + informacje o konflikcie styl/tekst.
-	/// </summary>
-	public sealed class ClassificationResult
-	{
-		public ParagraphKind Kind { get; set; } = ParagraphKind.Unknown;
-		public string? StyleType { get; set; }
-		public bool UsedFallback { get; set; }
-		public bool StyleTextConflict { get; set; }
-		public bool IsAmendmentContent { get; set; }
-	}
-
 	/// <summary>
 	/// Klasyfikator akapitow. Rozpoznaje typ jednostki na bazie stylu i tekstu.
 	/// Zawiera skompilowane wzorce regex wspoldzielone z ParsingFactories i AmendmentBuilder.

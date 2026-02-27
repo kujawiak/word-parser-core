@@ -1,4 +1,5 @@
 using ModelDto;
+using ModelDto.EditorialUnits;
 using Serilog;
 using WordParserLibrary.Helpers;
 using WordParserLibrary.Services.Parsing.Builders;
@@ -90,7 +91,8 @@ namespace WordParserLibrary.Services.Parsing
 		/// aktualizuje pozycję strukturalną i wykrywa cele nowelizacji.
 		/// Zwraca true jeśli encja została zbudowana (wykrywanie triggera powinno nastąpić po powrocie).
 		/// </summary>
-		public bool Process(ParsingContext context, ClassificationResult classification, string text)
+		public bool Process(ParsingContext context, ClassificationResult classification, string text,
+			string? sourceStyleId = null)
 		{
 			if (classification.Kind == ParagraphKind.Article)
 			{
@@ -113,8 +115,19 @@ namespace WordParserLibrary.Services.Parsing
 				return true;
 			}
 
+			// Nierozpoznany — inference-first, potem diagnostyka
+			if (classification.Kind == ParagraphKind.Unknown)
+			{
+				HandleUnknown(context, text, sourceStyleId);
+				return true; // zawsze "skonsumowany"
+			}
+
 			if (context.CurrentArticle == null)
+			{
+				Log.Warning("Akapit {Kind} poza kontekstem artykułu (metadane lub pre-art.) — pominięty. Styl: {StyleId}",
+					classification.Kind, sourceStyleId);
 				return false;
+			}
 
 			switch (classification.Kind)
 			{
@@ -206,6 +219,8 @@ namespace WordParserLibrary.Services.Parsing
 					return true;
 
 				default:
+					Log.Warning("Nieobsługiwany ParagraphKind {Kind} w switch — pominięty (styl={StyleId})",
+						classification.Kind, sourceStyleId);
 					return false;
 			}
 		}
@@ -213,6 +228,67 @@ namespace WordParserLibrary.Services.Parsing
 		// ============================================================
 		// Metody pomocnicze
 		// ============================================================
+
+		/// <summary>
+		/// Obsługuje akapit Unknown: najpierw próbuje wywnioskować rodzaj z treści,
+		/// a gdy brak wzorca — dołącza ValidationMessage do najgłębszej aktywnej encji.
+		/// </summary>
+		private void HandleUnknown(ParsingContext context, string text, string? sourceStyleId)
+		{
+			// Krok 1: wywnioskuj z treści (ochrona przed edge cases LayeredClassifier)
+			if (context.CurrentArticle != null)
+			{
+				var inferredKind = TryInferKindFromText(text);
+				if (inferredKind != ParagraphKind.Unknown)
+				{
+					Log.Warning("Akapit Unknown — wywnioskowany jako {Kind} z wzorca tekstowego " +
+						"(styl: {StyleId}): {Text}",
+						inferredKind, sourceStyleId,
+						text.Length > 60 ? text[..60] + "…" : text);
+
+					var rescued = new ClassificationResult
+					{
+						Kind = inferredKind,
+						UsedFallback = true,
+						StyleTextConflict = true
+					};
+					Process(context, rescued, text, sourceStyleId);
+					return;
+				}
+			}
+
+			// Krok 2: brak wzorca — diagnostyka bez encji
+			if (context.CurrentArticle == null)
+			{
+				Log.Warning("Akapit Unknown przed pierwszym artykułem (metadane) — pominięty. " +
+					"Styl: {StyleId}, Tekst: {Text}",
+					sourceStyleId, text.Length > 80 ? text[..80] + "…" : text);
+				return;
+			}
+
+			var deepest = (BaseEntity?)context.CurrentLetter
+				?? (BaseEntity?)context.CurrentPoint
+				?? (BaseEntity?)context.CurrentParagraph
+				?? (BaseEntity?)context.CurrentArticle;
+
+			deepest?.ValidationMessages.Add(new ValidationMessage(
+				ValidationLevel.Warning,
+				$"Pominięty akapit nierozpoznany (styl: '{sourceStyleId ?? "brak"}')." +
+				$" Tekst: '{(text.Length > 80 ? text[..80] + "…" : text)}'"));
+
+			Log.Warning("Akapit Unknown pominięty — brak dopasowania do wzorca. " +
+				"Styl: {StyleId}, Tekst: {Text}",
+				sourceStyleId, text.Length > 80 ? text[..80] + "…" : text);
+		}
+
+		private static ParagraphKind TryInferKindFromText(string text)
+		{
+			if (ParagraphClassifier.IsParagraphByText(text)) return ParagraphKind.Paragraph;
+			if (ParagraphClassifier.IsPointByText(text))     return ParagraphKind.Point;
+			if (ParagraphClassifier.IsLetterByText(text))    return ParagraphKind.Letter;
+			if (ParagraphClassifier.IsTiretByText(text))     return ParagraphKind.Tiret;
+			return ParagraphKind.Unknown;
+		}
 
 		/// <summary>
 		/// Aktualizuje bieżącą pozycję strukturalną w kontekście na podstawie

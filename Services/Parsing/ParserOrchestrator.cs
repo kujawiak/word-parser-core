@@ -48,37 +48,57 @@ namespace WordParserLibrary.Services.Parsing
 			var text    = rawText.Sanitize().Trim();
 			var styleId = paragraph.StyleId();
 
-			ClassificationResult classification;
+			var classification = Classify(text, styleId, context);
+
+			UpdateArticleContext(context, classification, text);
+
+			if (HandleAmendmentFlow(context, classification, text, styleId)) return;
+
+			if (_structureProcessor.TryHandleWrapUp(context, rawText, styleId))
+				return;
+
+			if (_structureProcessor.Process(context, classification, text, styleId))
+				_amendmentManager.DetectTrigger(context, text);
+		}
+
+		/// <summary>
+		/// Hermetyzuje wybór klasyfikatora (usuwa smell "is LayeredParagraphClassifier" z głównej metody).
+		/// </summary>
+		private ClassificationResult Classify(string text, string? styleId, ParsingContext context)
+		{
 			if (_classifier is LayeredParagraphClassifier layered)
-			{
-				// Przekaż kontekst artykułu dla warstwy AI
-				classification = layered.Classify(new ClassificationInput(text, styleId)
+				return layered.Classify(new ClassificationInput(text, styleId)
 				{
 					ArticleContext = context.CurrentArticleTexts,
 				});
-			}
-			else
-			{
-				classification = _classifier.Classify(text, styleId);
-			}
+			return _classifier.Classify(text, styleId);
+		}
 
-			// Zbieraj teksty akapitów bieżącego artykułu (kontekst dla warstwy AI)
+		/// <summary>
+		/// Hermetyzuje aktualizację kontekstu artykułu dla warstwy AI.
+		/// </summary>
+		private static void UpdateArticleContext(
+			ParsingContext context, ClassificationResult classification, string text)
+		{
 			if (classification.Kind == ParagraphKind.Article)
 				context.CurrentArticleTexts.Clear();
 			if (!classification.IsAmendmentContent)
 				context.CurrentArticleTexts.Add(text);
+		}
 
-			// Zapamietaj stan nowelizacji PRZED aktualizacja
+		/// <summary>
+		/// Hermetyzuje cały cykl stanu nowelizacji. Zwraca true jeśli akapit został skonsumowany.
+		/// </summary>
+		private bool HandleAmendmentFlow(
+			ParsingContext context, ClassificationResult classification,
+			string text, string? styleId)
+		{
 			bool wasInsideAmendment = context.InsideAmendment;
-
-			// Sprawdz i aktualizuj stan nowelizacji PRZED przetwarzaniem
 			_amendmentManager.UpdateState(context, classification);
 
-			// Jesli wychodzmy z nowelizacji — zbuduj zebraną treść
 			if (wasInsideAmendment && !context.InsideAmendment)
 				_amendmentManager.Flush(context);
 
-			// Wyjscie z nowelizacji, gdy pojawia sie nieostylowany trigger nowego punktu/ustepu
 			if (_amendmentManager.ShouldExitForNewParentLawTrigger(context, classification, text))
 			{
 				Log.Debug("Zamknieto nowelizacje: wykryto nowy akapit z triggerem bez stylu ustawy matki");
@@ -86,19 +106,12 @@ namespace WordParserLibrary.Services.Parsing
 				context.InsideAmendment = false;
 			}
 
-			// Zbieraj akapity nowelizacji (zamiast pomijania)
 			if (classification.IsAmendmentContent || context.InsideAmendment)
 			{
 				_amendmentManager.Collect(context, text, styleId);
-				return;
+				return true;
 			}
-
-			if (_structureProcessor.TryHandleWrapUp(context, rawText, styleId))
-				return;
-
-			// Zbuduj encje domenową i wykryj trigger nowelizacji
-			if (_structureProcessor.Process(context, classification, text))
-				_amendmentManager.DetectTrigger(context, text);
+			return false;
 		}
 
 		/// <summary>

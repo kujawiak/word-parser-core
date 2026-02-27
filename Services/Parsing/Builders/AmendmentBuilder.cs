@@ -194,8 +194,7 @@ namespace WordParserLibrary.Services.Parsing.Builders
 					break;
 				default:
 					AppendPlainText(content, para.Text);
-					Log.Debug(
-						"AmendmentBuilder: akapit niesklasyfikowany, dodano jako tekst: {Text}",
+					Log.Debug("AmendmentBuilder: akapit niesklasyfikowany, dodano jako tekst: {Text}",
 						para.Text.Length > 60 ? para.Text[..60] + "..." : para.Text);
 					break;
 			}

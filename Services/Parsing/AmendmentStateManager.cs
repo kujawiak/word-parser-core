@@ -157,6 +157,16 @@ namespace WordParserLibrary.Services.Parsing
 				}
 
 				var collector = context.AmendmentCollector;
+
+				// Zapobieganie utracie poprzedniej nowelizacji gdy kolektor jest aktywny
+				if (collector.IsCollecting && collector.Count > 0)
+				{
+					Log.Warning("Uchylenie wykryte podczas aktywnego zbierania nowelizacji; " +
+						"finalizacja poprzedniej przed uchyleniem (owner={OwnerId})",
+						collector.Owner?.Id ?? "brak");
+					Flush(context);
+				}
+
 				var target = context.DetectedAmendmentTargets.TryGetValue(owner.Guid, out var t) ? t : null;
 				collector.Begin(owner, target);
 

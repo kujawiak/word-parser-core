@@ -1,5 +1,6 @@
 using ModelDto;
 using Serilog;
+using WordParserLibrary.Services.Classify;
 
 namespace WordParserLibrary.Services.Parsing
 {
@@ -186,35 +187,9 @@ namespace WordParserLibrary.Services.Parsing
 		}
 
 		/// <summary>
-		/// Oblicza następną wartość litery (a → b, z → aa, ab → ac, az → ba).
-		/// Analogicznie do nazewnictwa kolumn w arkuszach kalkulacyjnych.
+		/// Oblicza następną wartość litery — deleguje do <see cref="NumberingHint.GetNextLetterValue"/>.
 		/// </summary>
 		internal static string? GetNextLetterValue(string? currentLetter)
-		{
-			if (string.IsNullOrEmpty(currentLetter))
-				return null;
-
-			var chars = currentLetter.ToLowerInvariant().ToCharArray();
-			int carry = 1;
-
-			for (int i = chars.Length - 1; i >= 0 && carry > 0; i--)
-			{
-				int val = chars[i] - 'a' + carry;
-				if (val > 25)
-				{
-					chars[i] = 'a';
-					carry = 1;
-				}
-				else
-				{
-					chars[i] = (char)('a' + val);
-					carry = 0;
-				}
-			}
-
-			return carry > 0
-				? "a" + new string(chars) // overflow: z → aa
-				: new string(chars);
-		}
+			=> NumberingHint.GetNextLetterValue(currentLetter);
 	}
 }

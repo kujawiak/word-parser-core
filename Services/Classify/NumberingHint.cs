@@ -1,5 +1,4 @@
 using ModelDto;
-using WordParserLibrary.Services.Parsing;
 
 namespace WordParserLibrary.Services.Classify
 {
@@ -23,7 +22,6 @@ namespace WordParserLibrary.Services.Classify
 
 		/// <summary>
 		/// Zwraca true gdy <paramref name="actual"/> jest oczekiwanym następnikiem.
-		/// Logika tożsama z <see cref="NumberingContinuityValidator"/>.
 		/// </summary>
 		public bool IsContinuous(EntityNumber actual)
 		{
@@ -35,6 +33,38 @@ namespace WordParserLibrary.Services.Classify
 				return IsExpectedNextLetter(ExpectedNumber, actual);
 
 			return IsExpectedNextNumeric(ExpectedNumber, actual);
+		}
+
+		/// <summary>
+		/// Oblicza następną wartość litery (a → b, z → aa, ab → ac, az → ba).
+		/// Analogicznie do nazewnictwa kolumn w arkuszach kalkulacyjnych.
+		/// </summary>
+		internal static string? GetNextLetterValue(string? currentLetter)
+		{
+			if (string.IsNullOrEmpty(currentLetter))
+				return null;
+
+			var chars = currentLetter.ToLowerInvariant().ToCharArray();
+			int carry = 1;
+
+			for (int i = chars.Length - 1; i >= 0 && carry > 0; i--)
+			{
+				int val = chars[i] - 'a' + carry;
+				if (val > 25)
+				{
+					chars[i] = 'a';
+					carry = 1;
+				}
+				else
+				{
+					chars[i] = (char)('a' + val);
+					carry = 0;
+				}
+			}
+
+			return carry > 0
+				? "a" + new string(chars) // overflow: z → aa
+				: new string(chars);
 		}
 
 		private static bool IsExpectedNextNumeric(EntityNumber previous, EntityNumber current)
@@ -57,7 +87,7 @@ namespace WordParserLibrary.Services.Classify
 				return true;
 
 			// Następna litera alfabetu (a → b, z → aa)
-			var expectedNext = NumberingContinuityValidator.GetNextLetterValue(previous.LexicalPart);
+			var expectedNext = GetNextLetterValue(previous.LexicalPart);
 			return !string.IsNullOrEmpty(expectedNext) &&
 			       string.Equals(current.LexicalPart, expectedNext, System.StringComparison.OrdinalIgnoreCase);
 		}

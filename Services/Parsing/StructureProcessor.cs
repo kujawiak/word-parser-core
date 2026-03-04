@@ -11,7 +11,7 @@ namespace WordParserLibrary.Services.Parsing
 	/// Buduje encje domenowe (Article, Paragraph, Point, Letter, Tiret)
 	/// na podstawie wyników klasyfikacji akapitu. Odpowiada za:
 	/// - budowanie encji i resetowanie podpoziomów w kontekście,
-	/// - walidację numeracji przez NumberingContinuityValidator,
+	/// - transfer kar numeracyjnych z ClassificationResult jako ValidationMessage,
 	/// - aktualizację pozycji strukturalnej (CurrentStructuralReference),
 	/// - wykrywanie celów nowelizacji w treści encji,
 	/// - obsługę akapitów wrap-up (CZ_WSP_*).
@@ -23,7 +23,6 @@ namespace WordParserLibrary.Services.Parsing
 		private readonly PointBuilder _pointBuilder = new();
 		private readonly LetterBuilder _letterBuilder = new();
 		private readonly TiretBuilder _tiretBuilder = new();
-		private readonly NumberingContinuityValidator _numberingValidator = new();
 		private readonly JournalReferenceService _journalReferenceService = new();
 
 		/// <summary>
@@ -98,7 +97,7 @@ namespace WordParserLibrary.Services.Parsing
 			if (classification.Kind == ParagraphKind.Article)
 			{
 				var result = _articleBuilder.Build(new ArticleBuildInput(context.Subchapter, text));
-				_numberingValidator.ValidateArticle(result.Article);
+				ValidationReporter.AddClassificationWarning(result.Article, classification, "ART");
 				context.CurrentArticle = result.Article;
 				context.CurrentParagraph = result.Paragraph;
 				context.CurrentPoint = null;
@@ -135,7 +134,6 @@ namespace WordParserLibrary.Services.Parsing
 				case ParagraphKind.Paragraph:
 					context.CurrentParagraph = _paragraphBuilder.Build(
 						new ParagraphBuildInput(context.CurrentArticle, context.CurrentParagraph, text));
-					_numberingValidator.ValidateParagraph(context.CurrentParagraph);
 					ValidationReporter.AddClassificationWarning(context.CurrentParagraph, classification, "UST");
 					context.CurrentPoint = null;
 					context.CurrentLetter = null;
@@ -155,7 +153,6 @@ namespace WordParserLibrary.Services.Parsing
 
 					context.CurrentPoint = _pointBuilder.Build(
 						new PointBuildInput(context.CurrentParagraph, context.CurrentArticle, text));
-					_numberingValidator.ValidatePoint(context.CurrentPoint);
 					ValidationReporter.AddClassificationWarning(context.CurrentPoint, classification, "PKT");
 					context.CurrentLetter = null;
 					context.CurrentTiretIndex = 0;
@@ -179,7 +176,6 @@ namespace WordParserLibrary.Services.Parsing
 
 					context.CurrentLetter = _letterBuilder.Build(
 						new LetterBuildInput(context.CurrentPoint, context.CurrentParagraph, context.CurrentArticle, text));
-					_numberingValidator.ValidateLetter(context.CurrentLetter);
 					ValidationReporter.AddClassificationWarning(context.CurrentLetter, classification, "LIT");
 					context.CurrentTiretIndex = 0;
 

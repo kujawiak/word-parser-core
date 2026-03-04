@@ -1,20 +1,33 @@
 using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using ModelDto;
 using WordParserLibrary.Helpers;
 
 namespace WordParserLibrary.Services.Parsing
 {
 	/// <summary>
-	/// Klasyfikator akapitow. Rozpoznaje typ jednostki na bazie stylu i tekstu.
-	/// Zawiera skompilowane wzorce regex wspoldzielone z ParsingFactories i AmendmentBuilder.
+	/// Klasyfikator akapitów. Rozpoznaje typ jednostki redakcyjnej i oblicza pewność (1–100).
+	/// Rozwiązywanie konfliktów deleguje do <see cref="IConflictResolver"/>.
 	/// </summary>
 	public sealed class ParagraphClassifier : IParagraphClassifier
 	{
+		private readonly IConflictResolver       _conflictResolver;
+		private readonly ConfidencePenaltyConfig _cfg;
+
+		public ParagraphClassifier(
+			IConflictResolver?       conflictResolver = null,
+			ConfidencePenaltyConfig? penaltyConfig    = null)
+		{
+			_conflictResolver = conflictResolver ?? new DefaultConflictResolver();
+			_cfg              = penaltyConfig    ?? ConfidencePenaltyConfig.Default;
+		}
+
 		// ============================================================
-		// Wspoldzielone wzorce regex (compiled, reużywane w ParsingFactories)
+		// Współdzielone wzorce regex (reużywane przez ParsingFactories i AmendmentBuilder)
 		// ============================================================
 
-		/// <summary>Opcjonalny prefiks cytatu otwierajacego („ " ") w tekście akapitu.</summary>
+		/// <summary>Opcjonalny prefiks cytatu otwierającego („ " ") w tekście akapitu.</summary>
 		internal const string OptionalQuotePrefix = "(?:[\"\\u201E\\u201C\\u201D]\\s*)?";
 
 		internal static readonly Regex ArticlePattern = new(
@@ -55,143 +68,250 @@ namespace WordParserLibrary.Services.Parsing
 		/// <summary>Prefiks tiretu do usuwania (bez wymagania spacji).</summary>
 		internal static readonly Regex TiretStripPattern = new(
 			@"^\u2013+\s*", RegexOptions.Compiled);
+
+		// ============================================================
+		// Implementacja IParagraphClassifier
+		// ============================================================
+
 		/// <summary>
-		/// Klasyfikuje akapit do typu jednostki (Art/Ust/Pkt/Lit/Tir).
+		/// Klasyfikuje akapit do typu jednostki redakcyjnej i oblicza pewność (1–100).
+		/// Confidence = 100 gdy styl, regex i numeracja są w pełnej zgodzie.
 		/// </summary>
-		public ClassificationResult Classify(string text, string? styleId)
+		public ClassificationResult Classify(ClassificationInput input)
 		{
-			var styleType = GetStyleType(styleId);
-			var isArticleByText = IsArticleByText(text);
-			var isParagraphByText = IsParagraphByText(text);
-			var isPointByText = IsPointByText(text);
-			var isLetterByText = IsLetterByText(text);
-			var isTiretByText = IsTiretByText(text);
+			var text      = input.Text;
+			var styleType = GetStyleType(input.StyleId);
+			var isAmend   = styleType == "AMENDMENT";
 
-			var result = new ClassificationResult
-			{
-				StyleType = styleType
-			};
+			// WrapUp — priorytet przed pozostałą logiką.
+			// Wykrywany wyłącznie przez styl (CZ_WSP_*); tekst jedynie potwierdza lub obniża pewność.
+			if (styleType == "WRAPUP")
+				return BuildWrapUpResult(styleType, isAmend, byStyle: true, IsWrapUpByText(text));
 
-			// Sprawdz czy to styl nowelizacji (Z/...)
-			if (styleType == "AMENDMENT")
-			{
-				result.IsAmendmentContent = true;
-				return result;
-			}
+			// Sygnał ze stylu (null gdy AMENDMENT lub nieznany)
+			ParagraphKind? styleKind = isAmend ? null : MapStyleToKind(styleType);
 
-			if (isArticleByText)
-			{
-				result.Kind = ParagraphKind.Article;
-				result.UsedFallback = styleType == null || !styleType.Equals("ART", StringComparison.OrdinalIgnoreCase);
-				result.StyleTextConflict = styleType != null && !styleType.Equals("ART", StringComparison.OrdinalIgnoreCase);
-				return result;
-			}
+			// Sygnał syntaktyczny (regex)
+			ParagraphKind? syntacticKind = MatchRegex(text);
 
-			if (isParagraphByText || (!isPointByText && !isLetterByText && !isTiretByText && styleType == "UST"))
-			{
-				result.Kind = ParagraphKind.Paragraph;
-				result.UsedFallback = isParagraphByText;
-				result.StyleTextConflict = isParagraphByText && styleType != null && styleType != "UST";
-				return result;
-			}
-
-			if (isPointByText || (!isParagraphByText && !isLetterByText && !isTiretByText && styleType == "PKT"))
-			{
-				result.Kind = ParagraphKind.Point;
-				result.UsedFallback = isPointByText;
-				result.StyleTextConflict = isPointByText && styleType != null && styleType != "PKT";
-				return result;
-			}
-
-			if (isLetterByText || (!isParagraphByText && !isPointByText && !isTiretByText && styleType == "LIT"))
-			{
-				result.Kind = ParagraphKind.Letter;
-				result.UsedFallback = isLetterByText;
-				result.StyleTextConflict = isLetterByText && styleType != null && styleType != "LIT";
-				return result;
-			}
-
-			if (isTiretByText || (!isParagraphByText && !isPointByText && !isLetterByText && styleType == "TIR"))
-			{
-				result.Kind = ParagraphKind.Tiret;
-				result.UsedFallback = isTiretByText;
-				result.StyleTextConflict = isTiretByText && styleType != null && styleType != "TIR";
-				return result;
-			}
-
-			return result;
+			return BuildResult(input, styleType, isAmend, styleKind, syntacticKind);
 		}
+
+		// ============================================================
+		// Metody pomocnicze — publiczne statyczne (reużywane zewnętrznie)
+		// ============================================================
 
 		public static string? GetStyleType(string? styleId)
 		{
 			if (string.IsNullOrEmpty(styleId))
-			{
 				return null;
+
+			// Wykryj style nowelizacji po mapie styli (priorytet nad heurystyką)
+			if (StyleLibraryMapper.TryGetStyleInfo(styleId, out var info) && info != null)
+			{
+				if (info.IsAmendment)
+					return "AMENDMENT";
+
+				// WrapUp — styl zamknięcia listy (CZ_WSP_*)
+				if (info.DisplayName.StartsWith("CZ_WSP_", StringComparison.OrdinalIgnoreCase))
+					return "WRAPUP";
 			}
 
-			// Wykryj style nowelizacji po mapie styli (priorytet nad heurystyką).
-			if (StyleLibraryMapper.TryGetStyleInfo(styleId, out var info) && info?.IsAmendment == true)
-			{
+			// Fallback dla styli nowelizacji spoza mapy
+			if (styleId.StartsWith("Z/",  StringComparison.OrdinalIgnoreCase) ||
+			    styleId.StartsWith("ZZ",  StringComparison.OrdinalIgnoreCase) ||
+			    styleId.StartsWith("Z_",  StringComparison.OrdinalIgnoreCase))
 				return "AMENDMENT";
-			}
 
-			// Fallback dla nietypowych styli nowelizacji spoza mapy.
-			// Prefiksy: Z/ (zmiana artykułem/punktem), ZZ/ (zmiana zmiany),
-			// Z_LIT/ (zmiana literą), Z_TIR/ (zmiana tiretem), Z_2TIR/ (podwójnym tiretem)
-			if (styleId.StartsWith("Z/", StringComparison.OrdinalIgnoreCase) ||
-				styleId.StartsWith("ZZ", StringComparison.OrdinalIgnoreCase) ||
-				styleId.StartsWith("Z_", StringComparison.OrdinalIgnoreCase))
-			{
-				return "AMENDMENT";
-			}
-
-			if (styleId.StartsWith("ART", StringComparison.OrdinalIgnoreCase))
-			{
-				return "ART";
-			}
-			if (styleId.StartsWith("UST", StringComparison.OrdinalIgnoreCase))
-			{
-				return "UST";
-			}
-			if (styleId.StartsWith("PKT", StringComparison.OrdinalIgnoreCase))
-			{
-				return "PKT";
-			}
-			if (styleId.StartsWith("LIT", StringComparison.OrdinalIgnoreCase))
-			{
-				return "LIT";
-			}
-			if (styleId.StartsWith("TIR", StringComparison.OrdinalIgnoreCase))
-			{
-				return "TIR";
-			}
+			if (styleId.StartsWith("ART", StringComparison.OrdinalIgnoreCase)) return "ART";
+			if (styleId.StartsWith("UST", StringComparison.OrdinalIgnoreCase)) return "UST";
+			if (styleId.StartsWith("PKT", StringComparison.OrdinalIgnoreCase)) return "PKT";
+			if (styleId.StartsWith("LIT", StringComparison.OrdinalIgnoreCase)) return "LIT";
+			if (styleId.StartsWith("TIR", StringComparison.OrdinalIgnoreCase)) return "TIR";
 
 			return null;
 		}
 
-		public static bool IsArticleByText(string text)
+		public static bool IsArticleByText(string text)   => ArticlePattern.IsMatch(text.Trim());
+		public static bool IsParagraphByText(string text) => ParagraphPattern.IsMatch(text);
+		public static bool IsPointByText(string text)     => PointPattern.IsMatch(text);
+		public static bool IsLetterByText(string text)    => LetterPattern.IsMatch(text);
+		public static bool IsTiretByText(string text)     => TiretPattern.IsMatch(text);
+
+		/// <summary>
+		/// Sprawdza czy tekst to WrapUp (rozpoczyna się półpauzą lub dywizem po których stoi spacja).
+		/// </summary>
+		public static bool IsWrapUpByText(string text)
 		{
-			return ArticlePattern.IsMatch(text.Trim());
+			if (string.IsNullOrWhiteSpace(text))
+				return false;
+			var trimmed = text.TrimStart();
+			if (trimmed.Length < 2)
+				return false;
+			var first = trimmed[0];
+			return (first == '\u2013' || first == '-') && char.IsWhiteSpace(trimmed[1]);
 		}
 
-		public static bool IsParagraphByText(string text)
+		// ============================================================
+		// Prywatne metody budowania wyniku
+		// ============================================================
+
+		private ClassificationResult BuildWrapUpResult(
+			string? styleType, bool isAmend, bool byStyle, bool byText)
 		{
-			return ParagraphPattern.IsMatch(text);
+			var penalties  = new List<ClassificationPenalty>();
+			int confidence = 100;
+
+			if (!byStyle)
+			{
+				penalties.Add(new ClassificationPenalty
+				{
+					Reason = "Brak stylu WrapUp — typ ustalony wyłącznie z tekstu",
+					Value  = _cfg.StyleAbsentPenalty,
+				});
+				confidence -= _cfg.StyleAbsentPenalty;
+			}
+			if (!byText)
+			{
+				penalties.Add(new ClassificationPenalty
+				{
+					Reason = "Brak półpauzy w tekście — typ ustalony wyłącznie ze stylu",
+					Value  = _cfg.SyntaxAbsentPenalty,
+				});
+				confidence -= _cfg.SyntaxAbsentPenalty;
+			}
+
+			return new ClassificationResult
+			{
+				Kind               = ParagraphKind.WrapUp,
+				Confidence         = Math.Clamp(confidence, 1, 100),
+				IsAmendmentContent = isAmend,
+				StyleType          = styleType,
+				Penalties          = penalties,
+			};
 		}
 
-		public static bool IsPointByText(string text)
+		private ClassificationResult BuildResult(
+			ClassificationInput input,
+			string?             styleType,
+			bool                isAmend,
+			ParagraphKind?      styleKind,
+			ParagraphKind?      syntacticKind)
 		{
-			return PointPattern.IsMatch(text);
+			var   penalties  = new List<ClassificationPenalty>();
+			int   confidence = 100;
+			ParagraphKind kind;
+
+			if (styleKind == null && syntacticKind == null)
+			{
+				// Brak obu sygnałów
+				kind       = ParagraphKind.Unknown;
+				confidence = 1;
+			}
+			else if (styleKind != null && syntacticKind != null)
+			{
+				if (styleKind == syntacticKind)
+				{
+					// Oba sygnały zgodne
+					kind = syntacticKind.Value;
+				}
+				else
+				{
+					// Konflikt — delegacja do IConflictResolver
+					kind = _conflictResolver.Resolve(styleKind.Value, syntacticKind.Value, input.Text, input.StyleId);
+					penalties.Add(new ClassificationPenalty
+					{
+						Reason = $"Konflikt: styl={styleKind}, regex={syntacticKind}; rozstrzygnięto: {kind}",
+						Value  = _cfg.StyleSyntaxConflictPenalty,
+					});
+					confidence -= _cfg.StyleSyntaxConflictPenalty;
+				}
+			}
+			else if (syntacticKind != null)
+			{
+				// Tylko regex
+				kind = syntacticKind.Value;
+				penalties.Add(new ClassificationPenalty
+				{
+					Reason = "Brak rozpoznanego stylu Word",
+					Value  = _cfg.StyleAbsentPenalty,
+				});
+				confidence -= _cfg.StyleAbsentPenalty;
+			}
+			else
+			{
+				// Tylko styl — artykuł wymaga sygnatury tekstowej
+				if (styleKind == ParagraphKind.Article)
+				{
+					kind       = ParagraphKind.Unknown;
+					confidence = 1;
+				}
+				else
+				{
+					kind = styleKind!.Value;
+					penalties.Add(new ClassificationPenalty
+					{
+						Reason = "Brak dopasowania regex — typ z samego stylu",
+						Value  = _cfg.SyntaxAbsentPenalty,
+					});
+					confidence -= _cfg.SyntaxAbsentPenalty;
+				}
+			}
+
+			// Sprawdzenie ciągłości numeracji (NumberingHint)
+			if (input.NumberingHint is { } hint && hint.ExpectedKind == kind && kind != ParagraphKind.Unknown)
+			{
+				var parsedNumber = ParseNumberForKind(kind, input.Text);
+				if (parsedNumber != null && !hint.IsContinuous(parsedNumber))
+				{
+					penalties.Add(new ClassificationPenalty
+					{
+						Reason = $"Nieciągłość numeracji {kind}: oczekiwano następnika {hint.ExpectedNumber?.Value}",
+						Value  = _cfg.NumberingBreakPenalty,
+					});
+					confidence -= _cfg.NumberingBreakPenalty;
+				}
+			}
+
+			return new ClassificationResult
+			{
+				Kind               = kind,
+				Confidence         = Math.Clamp(confidence, 1, 100),
+				IsAmendmentContent = isAmend,
+				StyleType          = styleType,
+				Penalties          = penalties,
+			};
 		}
 
-		public static bool IsLetterByText(string text)
+		private static ParagraphKind? MapStyleToKind(string? styleType) =>
+			styleType switch
+			{
+				"ART" => ParagraphKind.Article,
+				"UST" => ParagraphKind.Paragraph,
+				"PKT" => ParagraphKind.Point,
+				"LIT" => ParagraphKind.Letter,
+				"TIR" => ParagraphKind.Tiret,
+				_     => null,
+			};
+
+		private static ParagraphKind? MatchRegex(string text)
 		{
-			return LetterPattern.IsMatch(text);
+			if (IsArticleByText(text))   return ParagraphKind.Article;
+			if (IsParagraphByText(text)) return ParagraphKind.Paragraph;
+			if (IsPointByText(text))     return ParagraphKind.Point;
+			if (IsLetterByText(text))    return ParagraphKind.Letter;
+			if (IsTiretByText(text))     return ParagraphKind.Tiret;
+			return null;
 		}
 
-		public static bool IsTiretByText(string text)
-		{
-			return TiretPattern.IsMatch(text);
-		}
+		private static EntityNumber? ParseNumberForKind(ParagraphKind kind, string text) =>
+			kind switch
+			{
+				ParagraphKind.Article   => ParsingFactories.ParseArticleNumber(text),
+				ParagraphKind.Paragraph => ParsingFactories.ParseParagraphNumber(text),
+				ParagraphKind.Point     => ParsingFactories.ParsePointNumber(text),
+				ParagraphKind.Letter    => ParsingFactories.ParseLetterNumber(text),
+				_                       => null,
+			};
 	}
 }

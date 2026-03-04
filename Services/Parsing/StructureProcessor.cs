@@ -27,9 +27,9 @@ namespace WordParserLibrary.Services.Parsing
 
 		/// <summary>
 		/// Obsługuje akapit wrap-up (zamknięcie listy przez półpauzę przed pozycją nadrzędną).
-		/// Zwraca true jeśli styl odpowiada CZ_WSP_* — niezależnie od tego czy wrap-up został dodany.
+		/// Wywoływana z Process() gdy classification.Kind == WrapUp.
 		/// </summary>
-		public bool TryHandleWrapUp(ParsingContext context, string text, string? styleId)
+		private static bool TryHandleWrapUp(ParsingContext context, string text, string? styleId)
 		{
 			if (!TryGetWrapUpTarget(styleId, out var targetKind))
 				return false;
@@ -218,6 +218,10 @@ namespace WordParserLibrary.Services.Parsing
 					DetectAmendmentTargets(context, tiret);
 					return true;
 
+				case ParagraphKind.WrapUp:
+					TryHandleWrapUp(context, text, sourceStyleId);
+					return true;
+
 				default:
 					Log.Warning("Nieobsługiwany ParagraphKind {Kind} w switch — pominięty (styl={StyleId})",
 						classification.Kind, sourceStyleId);
@@ -248,9 +252,16 @@ namespace WordParserLibrary.Services.Parsing
 
 					var rescued = new ClassificationResult
 					{
-						Kind = inferredKind,
-						UsedFallback = true,
-						StyleTextConflict = true
+						Kind       = inferredKind,
+						Confidence = 50,
+						Penalties  =
+						[
+							new ClassificationPenalty
+							{
+								Reason = "Wywnioskowano z wzorca tekstowego po braku klasyfikacji",
+								Value  = 50,
+							},
+						],
 					};
 					Process(context, rescued, text, sourceStyleId);
 					return;

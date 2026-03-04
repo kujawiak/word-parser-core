@@ -7,6 +7,7 @@ namespace WordParserLibrary.Services.Parsing
 		Point,
 		Letter,
 		Tiret,
+		WrapUp,
 		Unknown
 	}
 }

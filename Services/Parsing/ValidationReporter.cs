@@ -3,28 +3,26 @@ using ModelDto;
 namespace WordParserLibrary.Services.Parsing
 {
 	/// <summary>
-	/// Rejestruje ostrzezenia i komunikaty walidacji na encjach DTO.
+	/// Rejestruje ostrzeżenia i komunikaty walidacji na encjach DTO.
 	/// </summary>
 	public static class ValidationReporter
 	{
-		public static void AddClassificationWarning(BaseEntity entity, ClassificationResult classification, string expectedType)
+		/// <summary>
+		/// Dodaje ostrzeżenie walidacyjne gdy klasyfikacja miała niską pewność (Confidence &lt; 100).
+		/// Każda kara klasyfikatora jest rejestrowana jako osobny komunikat.
+		/// </summary>
+		public static void AddClassificationWarning(
+			BaseEntity           entity,
+			ClassificationResult classification,
+			string               expectedType)
 		{
-			if (!classification.UsedFallback)
-			{
+			if (classification.Confidence >= 100 || classification.Penalties.Count == 0)
 				return;
-			}
 
-			if (classification.StyleType == null)
+			foreach (var penalty in classification.Penalties)
 			{
 				AddValidationMessage(entity, ValidationLevel.Warning,
-					$"Brak stylu {expectedType}; uzyto reguly tekstowej.");
-				return;
-			}
-
-			if (classification.StyleTextConflict)
-			{
-				AddValidationMessage(entity, ValidationLevel.Warning,
-					$"Styl {classification.StyleType} w konflikcie z trescia ({expectedType}); uzyto tresci.");
+					$"{expectedType}: {penalty.Reason} (kara -{penalty.Value})");
 			}
 		}
 

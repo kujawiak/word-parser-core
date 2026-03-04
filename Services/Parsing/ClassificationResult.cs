@@ -1,22 +1,29 @@
 using System.Collections.Generic;
-using WordParserLibrary.Services.Parsing.Classification;
 
 namespace WordParserLibrary.Services.Parsing
 {
 	/// <summary>
-	/// Wynik klasyfikacji akapitu: typ + informacje o konflikcie styl/tekst.
+	/// Wynik klasyfikacji akapitu: typ jednostki redakcyjnej, pewność (1–100)
+	/// oraz opcjonalne kary diagnostyczne.
+	/// IsAmendmentContent to cecha równoległa do Kind — akapit nowelizacji zachowuje swój Kind.
 	/// </summary>
 	public sealed class ClassificationResult
 	{
-		// Istniejące pola — bez zmian (wsteczna zgodność)
-		public ParagraphKind Kind { get; set; } = ParagraphKind.Unknown;
-		public string? StyleType { get; set; }
-		public bool UsedFallback { get; set; }
-		public bool StyleTextConflict { get; set; }
-		public bool IsAmendmentContent { get; set; }
+		public ParagraphKind Kind             { get; init; } = ParagraphKind.Unknown;
 
-		// Nowe pola — null gdy pochodzi z ParagraphClassifier (tryb legacy)
-		public int? Confidence { get; set; }
-		public IReadOnlyList<LayerClassificationResult>? LayerResults { get; set; }
+		/// <summary>Pewność klasyfikacji w skali 1–100. 100 = pełna zgodność wszystkich sygnałów.</summary>
+		public int Confidence { get; init; }
+
+		/// <summary>
+		/// True gdy akapit pochodzi z treści nowelizacji (styl Z/*).
+		/// Nie wyklucza Kind — artykuł nowelizacji ma Kind=Article i IsAmendmentContent=true.
+		/// </summary>
+		public bool IsAmendmentContent { get; init; }
+
+		/// <summary>Znormalizowany typ stylu Word ("ART","UST","PKT","LIT","TIR","WRAPUP","AMENDMENT",null).</summary>
+		public string? StyleType { get; init; }
+
+		/// <summary>Kary zastosowane podczas obliczania Confidence — do celów diagnostycznych.</summary>
+		public IReadOnlyList<ClassificationPenalty> Penalties { get; init; } = [];
 	}
 }

@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using ModelDto;
+using WordParserLibrary.Services.Classify;
 using ModelDto.EditorialUnits;
 using DtoArticle = ModelDto.EditorialUnits.Article;
 using DtoLetter = ModelDto.EditorialUnits.Letter;

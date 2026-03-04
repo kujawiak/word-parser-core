@@ -1,4 +1,4 @@
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserLibrary.Services.Classify
 {
 	/// <summary>
 	/// Konfigurowalne kary zmniejszające Confidence klasyfikacji.

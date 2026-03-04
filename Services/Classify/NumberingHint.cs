@@ -1,6 +1,7 @@
 using ModelDto;
+using WordParserLibrary.Services.Parsing;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserLibrary.Services.Classify
 {
 	/// <summary>
 	/// Podpowiedź numeracyjna obliczana przez orkiestrator przed klasyfikacją.

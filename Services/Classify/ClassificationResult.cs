@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserLibrary.Services.Classify
 {
 	/// <summary>
 	/// Wynik klasyfikacji akapitu: typ jednostki redakcyjnej, pewność (1–100)

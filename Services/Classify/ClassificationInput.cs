@@ -1,4 +1,4 @@
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserLibrary.Services.Classify
 {
 	/// <summary>
 	/// Dane wejściowe dla <see cref="IParagraphClassifier"/>.

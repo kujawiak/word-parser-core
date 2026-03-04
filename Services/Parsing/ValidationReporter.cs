@@ -1,4 +1,5 @@
 using ModelDto;
+using WordParserLibrary.Services.Classify;
 
 namespace WordParserLibrary.Services.Parsing
 {

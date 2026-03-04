@@ -2,6 +2,7 @@ using ModelDto;
 using ModelDto.EditorialUnits;
 using Serilog;
 using WordParserLibrary.Helpers;
+using WordParserLibrary.Services.Classify;
 using WordParserLibrary.Services.Parsing.Builders;
 
 namespace WordParserLibrary.Services.Parsing

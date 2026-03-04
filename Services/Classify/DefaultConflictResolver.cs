@@ -1,4 +1,4 @@
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserLibrary.Services.Classify
 {
 	/// <summary>
 	/// Domyślna implementacja <see cref="IConflictResolver"/> — treść wygrywa nad stylem.

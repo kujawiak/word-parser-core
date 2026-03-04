@@ -1,5 +1,6 @@
 using DocumentFormat.OpenXml.Wordprocessing;
 using WordParserLibrary.Helpers;
+using WordParserLibrary.Services.Classify;
 
 namespace WordParserLibrary.Services.Parsing
 {

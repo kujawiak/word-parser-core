@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using ModelDto;
 using WordParserLibrary.Helpers;
+using WordParserLibrary.Services.Parsing;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserLibrary.Services.Classify
 {
 	/// <summary>
 	/// Klasyfikator akapitów. Rozpoznaje typ jednostki redakcyjnej i oblicza pewność (1–100).

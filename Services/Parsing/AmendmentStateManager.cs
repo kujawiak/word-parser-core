@@ -1,5 +1,6 @@
 using ModelDto;
 using Serilog;
+using WordParserLibrary.Services.Classify;
 using WordParserLibrary.Services.Parsing.Builders;
 
 namespace WordParserLibrary.Services.Parsing

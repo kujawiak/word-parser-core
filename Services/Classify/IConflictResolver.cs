@@ -1,4 +1,4 @@
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserLibrary.Services.Classify
 {
 	/// <summary>
 	/// Rozstrzyga konflikt między sygnałem stylu a sygnałem syntaktycznym (regex).

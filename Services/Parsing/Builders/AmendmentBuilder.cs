@@ -4,6 +4,7 @@ using ModelDto;
 using ModelDto.EditorialUnits;
 using WordParserLibrary.Helpers;
 using WordParserLibrary.Services;
+using WordParserLibrary.Services.Classify;
 using Serilog;
 
 namespace WordParserLibrary.Services.Parsing.Builders

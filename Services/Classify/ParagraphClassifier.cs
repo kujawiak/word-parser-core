@@ -44,7 +44,7 @@ namespace WordParserLibrary.Services.Classify
 			$@"^{OptionalQuotePrefix}[a-zA-Z]{{1,5}}\)\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
 		internal static readonly Regex TiretPattern = new(
-			@"^\u2013+\s+", RegexOptions.Compiled);
+			@"^-+\s+", RegexOptions.Compiled);
 
 		/// <summary>Artykuł z grupą przechwytującą numer (do ParseArticleNumber).</summary>
 		internal static readonly Regex ArticleNumberCapture = new(
@@ -68,7 +68,7 @@ namespace WordParserLibrary.Services.Classify
 
 		/// <summary>Prefiks tiretu do usuwania (bez wymagania spacji).</summary>
 		internal static readonly Regex TiretStripPattern = new(
-			@"^\u2013+\s*", RegexOptions.Compiled);
+			@"^-+\s*", RegexOptions.Compiled);
 
 		// ============================================================
 		// Implementacja IParagraphClassifier

@@ -126,7 +126,7 @@ namespace WordParserLibrary.Services.Parsing
 			string?              styleId)
 		{
 			bool wasInsideAmendment = context.InsideAmendment;
-			_amendmentManager.UpdateState(context, classification);
+			_amendmentManager.UpdateState(context, classification, text);
 
 			if (wasInsideAmendment && !context.InsideAmendment)
 				_amendmentManager.Flush(context);

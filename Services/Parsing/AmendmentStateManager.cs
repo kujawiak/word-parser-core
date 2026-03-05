@@ -19,11 +19,12 @@ namespace WordParserLibrary.Services.Parsing
 		/// Aktualizuje stan nowelizacji w kontekście na podstawie wyniku klasyfikacji bieżącego akapitu.
 		/// Logika oparta na stylach:
 		/// - Styl Z/... → zawsze nowelizacja
-		/// - Rozpoznany styl ustawy matki (ART/UST/PKT/LIT/TIR) → wyjście z nowelizacji
+		/// - Rozpoznany styl ustawy matki (ART/UST/PKT/LIT/TIR) → wyjście z nowelizacji,
+		///   CHYBA ŻE aktywny trigger + akapit nie zawiera własnego triggera → treść nowelizacji
 		/// - Brak stylu + trigger → wejście w nowelizację
 		/// - Brak stylu + już w nowelizacji → pozostaje w nowelizacji
 		/// </summary>
-		public void UpdateState(ParsingContext context, ClassificationResult classification)
+		public void UpdateState(ParsingContext context, ClassificationResult classification, string text)
 		{
 			// 1. Styl Z/... → zawsze nowelizacja
 			if (classification.IsAmendmentContent)
@@ -33,17 +34,34 @@ namespace WordParserLibrary.Services.Parsing
 				return;
 			}
 
-			// 2. Rozpoznany styl ustawy matki → wyjście z trybu nowelizacji
+			// 2. Rozpoznany styl ustawy matki
 			if (classification.StyleType != null)
 			{
+				// 2a. Aktywny trigger + akapit BEZ własnego zwrotu nowelizacyjnego
+				//     → akapit jest treścią nowelizacji (np. "1) nowe brzmienie pkt 1" z stylem PKT).
+				//     Bez tej reguły styl ustawy matki błędnie czyściłby trigger i gubił treść.
+				if (context.AmendmentTriggerDetected)
+				{
+					bool startsNewAmendment = AmendmentFinalizer.ModificationPattern.IsMatch(text)
+						|| AmendmentFinalizer.RepealPattern.IsMatch(text);
+
+					if (!startsNewAmendment)
+					{
+						context.InsideAmendment = true;
+						context.AmendmentTriggerDetected = false;
+						Log.Debug("Wejscie w nowelizacje po triggerze (styl ustawy matki {Style} bez wlasnego triggera)",
+							classification.StyleType);
+						return;
+					}
+					// else: akapit zawiera własny trigger → traktuj jak nowy element ustawy matki (fall-through)
+				}
+
 				if (context.InsideAmendment)
 				{
 					Log.Debug("Zamknieto nowelizacje (styl ustawy matki: {Style})", classification.StyleType);
 					context.InsideAmendment = false;
 				}
-				// Trigger jest czyszczony — ten akapit ma styl ustawy matki,
-				// więc nie jest treścią nowelizacji. Nowy trigger zostanie
-				// ustawiony PO przetworzeniu tego akapitu, jeśli zawiera zwrot.
+				// Trigger czyszczony — nowy zostanie ustawiony PO przetworzeniu tego akapitu, jeśli zawiera zwrot.
 				context.AmendmentTriggerDetected = false;
 				context.AmendmentOwner = null;
 				return;

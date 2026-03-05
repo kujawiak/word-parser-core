@@ -4,6 +4,7 @@ using DtoArticle = ModelDto.EditorialUnits.Article;
 using DtoLetter = ModelDto.EditorialUnits.Letter;
 using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
 using DtoPoint = ModelDto.EditorialUnits.Point;
+using DtoTiret = ModelDto.EditorialUnits.Tiret;
 
 namespace WordParserLibrary.Services.Parsing
 {
@@ -25,6 +26,7 @@ namespace WordParserLibrary.Services.Parsing
 		public DtoParagraph? CurrentParagraph { get; set; }
 		public DtoPoint? CurrentPoint { get; set; }
 		public DtoLetter? CurrentLetter { get; set; }
+		public DtoTiret? CurrentTiret { get; set; }
 		public int CurrentTiretIndex { get; set; }
 
 		/// <summary>

@@ -131,7 +131,11 @@ namespace WordParserLibrary.Services.Parsing
 			if (wasInsideAmendment && !context.InsideAmendment)
 				_amendmentManager.Flush(context);
 
-			if (_amendmentManager.ShouldExitForNewParentLawTrigger(context, classification, text))
+			// Guard: ShouldExitForNewParentLawTrigger jest sensowne tylko gdy bylismy JUZ w nowelizacji
+			// przed wywolaniem UpdateState. Jesli wlasnie weszlismy (wasInsideAmendment=false),
+			// to jestesmy przy pierwszym akapicie tresci — nie wolno go natychmiast wyrzucic,
+			// nawet jesli jego tekst zawiera zwrot nowelizacyjny (np. "w brzmieniu").
+			if (wasInsideAmendment && _amendmentManager.ShouldExitForNewParentLawTrigger(context, classification, text))
 			{
 				_amendmentManager.Flush(context);
 				context.InsideAmendment = false;

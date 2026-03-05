@@ -102,6 +102,7 @@ namespace WordParserLibrary.Services.Parsing
 				context.CurrentParagraph = result.Paragraph;
 				context.CurrentPoint = null;
 				context.CurrentLetter = null;
+				context.CurrentTiret = null;
 				context.CurrentTiretIndex = 0;
 
 				UpdateStructuralReference(context, result.Article);
@@ -137,6 +138,7 @@ namespace WordParserLibrary.Services.Parsing
 					ValidationReporter.AddClassificationWarning(context.CurrentParagraph, classification, "UST");
 					context.CurrentPoint = null;
 					context.CurrentLetter = null;
+					context.CurrentTiret = null;
 					context.CurrentTiretIndex = 0;
 
 					UpdateStructuralReference(context, context.CurrentParagraph);
@@ -155,6 +157,7 @@ namespace WordParserLibrary.Services.Parsing
 						new PointBuildInput(context.CurrentParagraph, context.CurrentArticle, text));
 					ValidationReporter.AddClassificationWarning(context.CurrentPoint, classification, "PKT");
 					context.CurrentLetter = null;
+					context.CurrentTiret = null;
 					context.CurrentTiretIndex = 0;
 
 					UpdateStructuralReference(context, context.CurrentPoint);
@@ -177,6 +180,7 @@ namespace WordParserLibrary.Services.Parsing
 					context.CurrentLetter = _letterBuilder.Build(
 						new LetterBuildInput(context.CurrentPoint, context.CurrentParagraph, context.CurrentArticle, text));
 					ValidationReporter.AddClassificationWarning(context.CurrentLetter, classification, "LIT");
+					context.CurrentTiret = null;
 					context.CurrentTiretIndex = 0;
 
 					UpdateStructuralReference(context, context.CurrentLetter);
@@ -210,6 +214,7 @@ namespace WordParserLibrary.Services.Parsing
 						context.CurrentLetter, context.CurrentPoint, context.CurrentParagraph,
 						context.CurrentArticle, text, context.CurrentTiretIndex));
 					ValidationReporter.AddClassificationWarning(tiret, classification, "TIR");
+					context.CurrentTiret = tiret;
 
 					UpdateStructuralReference(context, tiret);
 					DetectAmendmentTargets(context, tiret);

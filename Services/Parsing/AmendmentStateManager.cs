@@ -214,6 +214,9 @@ namespace WordParserLibrary.Services.Parsing
 		/// </summary>
 		public static BaseEntity? GetOwner(ParsingContext context)
 		{
+			// Tiret sprawdzany pierwszy — kazdy tiret moze byc wlascicielem wlasnej nowelizacji,
+			// a wielu tiretow w tej samej literze musi miec osobne Amendment (single-property).
+			if (context.CurrentTiret is IHasAmendments) return context.CurrentTiret;
 			if (context.CurrentLetter is IHasAmendments) return context.CurrentLetter;
 			if (context.CurrentPoint is IHasAmendments) return context.CurrentPoint;
 			if (context.CurrentParagraph is IHasAmendments) return context.CurrentParagraph;

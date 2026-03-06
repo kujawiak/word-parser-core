@@ -1,7 +1,7 @@
 using DtoArticle = ModelDto.EditorialUnits.Article;
 using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
 
-namespace WordParserLibrary.Services.Parsing.Builders
+namespace WordParserCore.Services.Parsing.Builders
 {
 	/// <summary>
 	/// Wejscie dla budowania ustepu (artykul + biezacy ustep + tekst).

@@ -1,6 +1,6 @@
 using System;
 
-namespace WordParserLibrary.Exceptions
+namespace WordParserCore.Exceptions
 {
     /// <summary>
     /// Wyjątek zgłaszany, gdy klasyfikacja akapitu jest niemożliwa lub prowadzi do niejednoznacznego wyniku

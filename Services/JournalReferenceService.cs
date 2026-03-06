@@ -3,7 +3,7 @@ using ModelDto;
 using ModelDto.EditorialUnits;
 using Serilog;
 
-namespace WordParserLibrary.Services
+namespace WordParserCore.Services
 {
 	/// <summary>
 	/// Serwis do parsowania publikatorów (Dz. U.) z treści artykułów

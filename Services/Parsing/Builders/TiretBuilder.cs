@@ -1,12 +1,12 @@
 using ModelDto;
-using WordParserLibrary.Services;
+using WordParserCore.Services;
 using DtoArticle = ModelDto.EditorialUnits.Article;
 using DtoLetter = ModelDto.EditorialUnits.Letter;
 using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
 using DtoPoint = ModelDto.EditorialUnits.Point;
 using DtoTiret = ModelDto.EditorialUnits.Tiret;
 
-namespace WordParserLibrary.Services.Parsing.Builders
+namespace WordParserCore.Services.Parsing.Builders
 {
 	/// <summary>
 	/// Wejscie dla budowania tiretu (litera + kontekst + indeks).

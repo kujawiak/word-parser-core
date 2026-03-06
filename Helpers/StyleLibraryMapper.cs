@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using WordParserLibrary.Helpers;
+using WordParserCore.Helpers;
 
-namespace WordParserLibrary
+namespace WordParserCore
 {
     public sealed record StyleInfo(string DisplayName, bool IsAmendment);
 

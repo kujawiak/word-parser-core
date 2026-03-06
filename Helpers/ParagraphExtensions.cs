@@ -1,7 +1,7 @@
 using System.Text;
 using DocumentFormat.OpenXml.Wordprocessing;
 
-namespace WordParserLibrary
+namespace WordParserCore
 {
     public static class ParagraphExtensions
     {

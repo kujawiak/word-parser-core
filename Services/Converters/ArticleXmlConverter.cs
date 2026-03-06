@@ -1,7 +1,7 @@
 using System.Xml.Linq;
 using ModelDto.EditorialUnits;
 
-namespace WordParserLibrary.Services.Converters
+namespace WordParserCore.Services.Converters
 {
     /// <summary>
     /// Konwerter dla artykułów - transformuje ArticleDto do XML.

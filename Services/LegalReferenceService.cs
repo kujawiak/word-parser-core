@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using ModelDto;
 
-namespace WordParserLibrary.Services
+namespace WordParserCore.Services
 {
     /// <summary>
     /// Serwis do zarządzania odniesieniami do aktów prawnych.

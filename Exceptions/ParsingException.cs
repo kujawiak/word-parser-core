@@ -1,6 +1,6 @@
 using System;
 
-namespace WordParserLibrary.Exceptions
+namespace WordParserCore.Exceptions
 {
     /// <summary>
     /// Bazowy wyjątek dla błędów w trakcie parsowania dokumentu prawnego.

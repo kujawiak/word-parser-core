@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="WordParserLibrary.Tests" />
+    <InternalsVisibleTo Include="WordParserCore.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,7 +4,7 @@ using ModelDto;
 using ModelDto.EditorialUnits;
 using Serilog;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Dane wejściowe dla finalizatora nowelizacji.

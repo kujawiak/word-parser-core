@@ -1,7 +1,7 @@
 using ModelDto;
-using WordParserLibrary.Services.Classify;
+using WordParserCore.Services.Classify;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Rejestruje ostrzeżenia i komunikaty walidacji na encjach DTO.

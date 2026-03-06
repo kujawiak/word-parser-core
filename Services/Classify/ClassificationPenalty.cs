@@ -1,4 +1,4 @@
-namespace WordParserLibrary.Services.Classify
+namespace WordParserCore.Services.Classify
 {
 	/// <summary>
 	/// Kara obniżająca pewność klasyfikacji wraz z opisem powodu.

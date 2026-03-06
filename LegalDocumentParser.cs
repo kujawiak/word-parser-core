@@ -4,10 +4,10 @@ using DocumentFormat.OpenXml.Packaging;
 using Word = DocumentFormat.OpenXml.Wordprocessing;
 using ModelDto;
 using ModelDto.SystematizingUnits;
-using WordParserLibrary.Exceptions;
-using WordParserLibrary.Services.Parsing;
+using WordParserCore.Exceptions;
+using WordParserCore.Services.Parsing;
 
-namespace WordParserLibrary
+namespace WordParserCore
 {
 	public static class LegalDocumentParser
 	{

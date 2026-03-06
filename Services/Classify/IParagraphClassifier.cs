@@ -1,4 +1,4 @@
-namespace WordParserLibrary.Services.Classify
+namespace WordParserCore.Services.Classify
 {
 	/// <summary>
 	/// Kontrakt klasyfikatora akapitów w parserze.

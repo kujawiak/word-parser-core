@@ -1,8 +1,8 @@
 using DocumentFormat.OpenXml.Wordprocessing;
-using WordParserLibrary.Helpers;
-using WordParserLibrary.Services.Classify;
+using WordParserCore.Helpers;
+using WordParserCore.Services.Classify;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Koordynuje jednoprzebiegowe parsowanie dokumentu prawnego.

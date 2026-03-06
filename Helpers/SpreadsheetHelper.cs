@@ -1,7 +1,7 @@
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Spreadsheet;
 
-namespace WordParserLibrary.Helpers
+namespace WordParserCore.Helpers
 {
     public static class SpreadsheetHelper
     {

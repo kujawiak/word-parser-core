@@ -1,6 +1,6 @@
 using System;
 
-namespace WordParserLibrary.Exceptions
+namespace WordParserCore.Exceptions
 {
     /// <summary>
     /// Wyjątek zgłaszany, gdy nowelizacja ma nieprawidłową strukturę lub brakuje wymaganych danych

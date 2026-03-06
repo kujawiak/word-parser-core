@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using ModelDto;
 using ModelDto.EditorialUnits;
-using WordParserLibrary.Helpers;
-using WordParserLibrary.Services;
-using WordParserLibrary.Services.Classify;
+using WordParserCore.Helpers;
+using WordParserCore.Services;
+using WordParserCore.Services.Classify;
 using Serilog;
 
-namespace WordParserLibrary.Services.Parsing.Builders
+namespace WordParserCore.Services.Parsing.Builders
 {
 	/// <summary>
 	/// Wejście dla budowania treści nowelizacji z zebranych akapitów.

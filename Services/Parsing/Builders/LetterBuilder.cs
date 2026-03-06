@@ -3,7 +3,7 @@ using DtoLetter = ModelDto.EditorialUnits.Letter;
 using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
 using DtoPoint = ModelDto.EditorialUnits.Point;
 
-namespace WordParserLibrary.Services.Parsing.Builders
+namespace WordParserCore.Services.Parsing.Builders
 {
 	/// <summary>
 	/// Wejscie dla budowania litery (punkt + ustep + artykul + tekst).

@@ -1,6 +1,6 @@
 using System;
 
-namespace WordParserLibrary.Helpers
+namespace WordParserCore.Helpers
 {
 	/// <summary>
 	/// Czym jest dokonywana zmiana (instrument nowelizacji).

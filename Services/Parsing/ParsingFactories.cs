@@ -1,14 +1,14 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using ModelDto;
-using WordParserLibrary.Services.Classify;
+using WordParserCore.Services.Classify;
 using ModelDto.EditorialUnits;
 using DtoArticle = ModelDto.EditorialUnits.Article;
 using DtoLetter = ModelDto.EditorialUnits.Letter;
 using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
 using DtoPoint = ModelDto.EditorialUnits.Point;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Fabryki pomocnicze dla parsowania: tworzenie encji, parsowanie numerow,

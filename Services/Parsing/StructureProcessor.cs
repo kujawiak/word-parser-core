@@ -1,11 +1,11 @@
 using ModelDto;
 using ModelDto.EditorialUnits;
 using Serilog;
-using WordParserLibrary.Helpers;
-using WordParserLibrary.Services.Classify;
-using WordParserLibrary.Services.Parsing.Builders;
+using WordParserCore.Helpers;
+using WordParserCore.Services.Classify;
+using WordParserCore.Services.Parsing.Builders;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Buduje encje domenowe (Article, Paragraph, Point, Letter, Tiret)

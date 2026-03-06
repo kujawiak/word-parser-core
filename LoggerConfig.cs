@@ -1,6 +1,6 @@
 using Serilog;
 
-namespace WordParserLibrary
+namespace WordParserCore
 {
     public static class LoggerConfig
     {

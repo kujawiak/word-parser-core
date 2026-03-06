@@ -1,4 +1,4 @@
-namespace WordParserLibrary.Services.Parsing.Builders
+namespace WordParserCore.Services.Parsing.Builders
 {
 	/// <summary>
 	/// Wspolny kontrakt dla builderow encji.

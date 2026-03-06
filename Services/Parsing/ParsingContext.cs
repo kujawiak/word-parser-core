@@ -6,7 +6,7 @@ using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
 using DtoPoint = ModelDto.EditorialUnits.Point;
 using DtoTiret = ModelDto.EditorialUnits.Tiret;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Kontekst parsowania przechowujacy aktualny stan drzewa encji

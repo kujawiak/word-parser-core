@@ -1,9 +1,9 @@
 using ModelDto;
 using Serilog;
-using WordParserLibrary.Services.Classify;
-using WordParserLibrary.Services.Parsing.Builders;
+using WordParserCore.Services.Classify;
+using WordParserCore.Services.Parsing.Builders;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Zarządza cyklem życia nowelizacji w trakcie parsowania:

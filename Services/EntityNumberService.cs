@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using ModelDto;
 
-namespace WordParserLibrary.Services
+namespace WordParserCore.Services
 {
     /// <summary>
     /// Serwis do parsowania i formatowania numerów encji (artykuł, ustęp, punkt, litera, tiret).

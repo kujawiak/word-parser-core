@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using ModelDto;
-using WordParserLibrary.Helpers;
+using WordParserCore.Helpers;
 using Serilog;
 
-namespace WordParserLibrary.Services.Parsing
+namespace WordParserCore.Services.Parsing
 {
 	/// <summary>
 	/// Dane pojedynczego akapitu zebranego jako tresc nowelizacji.

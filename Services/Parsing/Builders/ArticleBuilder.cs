@@ -2,7 +2,7 @@ using ModelDto.SystematizingUnits;
 using DtoArticle = ModelDto.EditorialUnits.Article;
 using DtoParagraph = ModelDto.EditorialUnits.Paragraph;
 
-namespace WordParserLibrary.Services.Parsing.Builders
+namespace WordParserCore.Services.Parsing.Builders
 {
 	/// <summary>
 	/// Wejscie dla budowania artykulu (subchapter + tekst akapitu).

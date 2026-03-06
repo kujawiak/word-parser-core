@@ -11,7 +11,14 @@ namespace WordParserLibrary.Services.Parsing.Builders
 	/// <summary>
 	/// Wejscie dla budowania tiretu (litera + kontekst + indeks).
 	/// </summary>
-	public sealed record TiretBuildInput(DtoLetter Letter, DtoPoint? Point, DtoParagraph? Paragraph, DtoArticle Article, string Text, int Index);
+	public sealed record TiretBuildInput(
+		DtoLetter Letter,
+		DtoPoint? Point,
+		DtoParagraph? Paragraph,
+		DtoArticle Article,
+		string Text,
+		int Index,
+		DtoTiret? ParentTiret = null);
 
 	/// <summary>
 	/// Builder tiretu: tworzy tiret i ustawia numer na podstawie indeksu.
@@ -31,7 +38,7 @@ namespace WordParserLibrary.Services.Parsing.Builders
 			var contentText = ParsingFactories.StripTiretPrefix(text);
 			var tiret = new DtoTiret
 			{
-				Parent = letter,
+				Parent = (BaseEntity?)input.ParentTiret ?? letter,
 				Article = article,
 				Paragraph = paragraph,
 				Point = point,
@@ -40,7 +47,10 @@ namespace WordParserLibrary.Services.Parsing.Builders
 			};
 			ParsingFactories.SetContentAndSegments(tiret, contentText);
 
-			letter.Tirets.Add(tiret);
+			if (input.ParentTiret != null)
+				input.ParentTiret.Tirets.Add(tiret);
+			else
+				letter.Tirets.Add(tiret);
 			return tiret;
 		}
 

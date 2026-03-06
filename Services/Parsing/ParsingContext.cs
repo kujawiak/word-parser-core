@@ -26,8 +26,16 @@ namespace WordParserLibrary.Services.Parsing
 		public DtoParagraph? CurrentParagraph { get; set; }
 		public DtoPoint? CurrentPoint { get; set; }
 		public DtoLetter? CurrentLetter { get; set; }
-		public DtoTiret? CurrentTiret { get; set; }
-		public int CurrentTiretIndex { get; set; }
+
+		/// <summary>
+		/// Stos aktywnych tiretow wg glebokosci (0 = brak, 1 = TIR, 2 = 2TIR, 3 = 3TIR).
+		/// Ostatni element to biezacy wlasciciel nowelizacji dla poziomu tiret.
+		/// Czyszczony przy kazdym wejsciu na poziom Letter/Point/Paragraph/Article.
+		/// </summary>
+		public List<DtoTiret> TiretStack { get; } = new();
+
+		/// <summary>Skrot: najglebszy aktywny tiret (lub null).</summary>
+		public DtoTiret? CurrentTiret => TiretStack.Count > 0 ? TiretStack[^1] : null;
 
 		/// <summary>
 		/// Serwis do budowania i aktualizacji referencji strukturalnych

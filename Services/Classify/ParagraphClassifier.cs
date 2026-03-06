@@ -129,6 +129,8 @@ namespace WordParserLibrary.Services.Classify
 			if (styleId.StartsWith("PKT", StringComparison.OrdinalIgnoreCase)) return "PKT";
 			if (styleId.StartsWith("LIT", StringComparison.OrdinalIgnoreCase)) return "LIT";
 			if (styleId.StartsWith("TIR", StringComparison.OrdinalIgnoreCase)) return "TIR";
+		if (styleId.StartsWith("2TIR", StringComparison.OrdinalIgnoreCase)) return "TIR";
+		if (styleId.StartsWith("3TIR", StringComparison.OrdinalIgnoreCase)) return "TIR";
 
 			return null;
 		}

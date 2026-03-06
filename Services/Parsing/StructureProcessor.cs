@@ -102,8 +102,7 @@ namespace WordParserLibrary.Services.Parsing
 				context.CurrentParagraph = result.Paragraph;
 				context.CurrentPoint = null;
 				context.CurrentLetter = null;
-				context.CurrentTiret = null;
-				context.CurrentTiretIndex = 0;
+				context.TiretStack.Clear();
 
 				UpdateStructuralReference(context, result.Article);
 				if (result.Paragraph != null)
@@ -138,8 +137,7 @@ namespace WordParserLibrary.Services.Parsing
 					ValidationReporter.AddClassificationWarning(context.CurrentParagraph, classification, "UST");
 					context.CurrentPoint = null;
 					context.CurrentLetter = null;
-					context.CurrentTiret = null;
-					context.CurrentTiretIndex = 0;
+					context.TiretStack.Clear();
 
 					UpdateStructuralReference(context, context.CurrentParagraph);
 					DetectAmendmentTargets(context, context.CurrentParagraph);
@@ -157,8 +155,7 @@ namespace WordParserLibrary.Services.Parsing
 						new PointBuildInput(context.CurrentParagraph, context.CurrentArticle, text));
 					ValidationReporter.AddClassificationWarning(context.CurrentPoint, classification, "PKT");
 					context.CurrentLetter = null;
-					context.CurrentTiret = null;
-					context.CurrentTiretIndex = 0;
+					context.TiretStack.Clear();
 
 					UpdateStructuralReference(context, context.CurrentPoint);
 					DetectAmendmentTargets(context, context.CurrentPoint);
@@ -180,8 +177,7 @@ namespace WordParserLibrary.Services.Parsing
 					context.CurrentLetter = _letterBuilder.Build(
 						new LetterBuildInput(context.CurrentPoint, context.CurrentParagraph, context.CurrentArticle, text));
 					ValidationReporter.AddClassificationWarning(context.CurrentLetter, classification, "LIT");
-					context.CurrentTiret = null;
-					context.CurrentTiretIndex = 0;
+					context.TiretStack.Clear();
 
 					UpdateStructuralReference(context, context.CurrentLetter);
 					DetectAmendmentTargets(context, context.CurrentLetter);
@@ -209,12 +205,27 @@ namespace WordParserLibrary.Services.Parsing
 					if (context.CurrentLetter.Tirets.Count == 0)
 						ParsingFactories.AttachIntroCommonPart(context.CurrentLetter);
 
-					context.CurrentTiretIndex++;
+					var tiretDepth = GetTiretDepth(sourceStyleId);
+
+					// Skroc stos do glebokosci depth-1 (usun tirety glebsze lub rowne)
+					while (context.TiretStack.Count >= tiretDepth)
+						context.TiretStack.RemoveAt(context.TiretStack.Count - 1);
+
+					var parentTiret = tiretDepth > 1 ? context.TiretStack[^1] : null;
+
+					// Intro wspolna - tylko dla pierwszego dziecka na danym poziomie
+					if (parentTiret != null && parentTiret.Tirets.Count == 0)
+						ParsingFactories.AttachIntroCommonPart(parentTiret);
+
+					var tiretIndex = parentTiret != null
+						? parentTiret.Tirets.Count + 1
+						: context.CurrentLetter.Tirets.Count + 1;
+
 					var tiret = _tiretBuilder.Build(new TiretBuildInput(
 						context.CurrentLetter, context.CurrentPoint, context.CurrentParagraph,
-						context.CurrentArticle, text, context.CurrentTiretIndex));
+						context.CurrentArticle, text, tiretIndex, parentTiret));
 					ValidationReporter.AddClassificationWarning(tiret, classification, "TIR");
-					context.CurrentTiret = tiret;
+					context.TiretStack.Add(tiret);
 
 					UpdateStructuralReference(context, tiret);
 					DetectAmendmentTargets(context, tiret);
@@ -376,6 +387,18 @@ namespace WordParserLibrary.Services.Parsing
 				current = current.Parent;
 			}
 			return null;
+		}
+
+		/// <summary>
+		/// Wyznacza glebokos tiretu na podstawie stylu akapitu.
+		/// 1 = TIR, 2 = 2TIR, 3 = 3TIR. Domyslnie 1.
+		/// </summary>
+		private static int GetTiretDepth(string? styleId)
+		{
+			if (string.IsNullOrEmpty(styleId)) return 1;
+			if (styleId.StartsWith("3TIR", StringComparison.OrdinalIgnoreCase)) return 3;
+			if (styleId.StartsWith("2TIR", StringComparison.OrdinalIgnoreCase)) return 2;
+			return 1;
 		}
 
 		private static bool IsWrapUpByText(string text)
